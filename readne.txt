@@ -1,0 +1,76 @@
+Both servers chalu che ready to test! Aa rite try karo:
+
+Abhi test karva mate (browser ma):
+
+Browser ma kholo: http://localhost:5173
+"Register" par click karine naya account banavo (naam, email, password)
+Automatically login thai jashe ane Dashboard page khulshe
+Pachi aa features try karo:
+
+Kya	Su karvu
+Chat	Navbar ma "Chat" → type karo "remind me to call mom tomorrow at 5pm" → AI reminder banavi dashe
+Reminders	Navbar ma "Reminders" → manually reminder add karo, subtasks/notes/category ukherso, "Missed" tab check karo
+Dashboard	Pending/Missed/Done/Streak dekhay, aje na tasks ni timeline
+Calendar	Month view, koi din par click karo task jova/add karva, task ne drag kari ne bija din par muko
+Language	Navbar ma jamani baju dropdown thi English/हिंदी/ગુજરાતી switch karo
+Have thi jate run karva mate (jyare hu na hou):
+
+Aa app na 2 parts che — pehla MongoDB pachi backend+frontend. Terminal/PowerShell kholo:
+
+1. MongoDB — pehla thi j Windows service tarike chalu che, kai karvani jarur nathi.
+
+2. Backend start karo:
+
+
+cd "C:\wamp64\www\AI reminder\backend"
+npm run dev
+"Server listening on port 5000" dekhay etle backend chalu che.
+
+3. Naya terminal window kholo, Frontend start karo:
+
+
+cd "C:\wamp64\www\AI reminder\frontend"
+npm run dev
+"Local: http://localhost:5173" dekhay etle browser ma e link kholo.
+
+Band karva mate: dareke terminal ma Ctrl+C daban.
+
+Koi step ma error aave to mane screenshot/error message batavjo, hu joi lais.
+
+------------------------------------
+
+Step 1 — App kholo
+Browser ma jao: http://localhost:5173
+
+Step 2 — Account banavo (agar navu hoi)
+"Register" per click karo
+Name, email, password (min 8 characters) nakhi "Sign up" dabao
+Automatically login thai jashe, Dashboard khulshe
+Step 3 — Basic reminder banavo (pehla aa test karo)
+"Reminders" tab per jao
+Title lakho (e.g. "Drink water"), date/time pasand karo
+"Add Reminder" dabao — niche list ma dekhavu joiye
+Step 4 — 🔥 Habit test karo
+Ek navu reminder banavta vakhte "🔥 Track as a habit" checkbox check karo, "Repeat: Daily" pasand karo
+Save karo
+Top menu ma "Habits" tab per jao — tamaru habit dekhashe, streak "0d" batavshe
+"🔥 Check in" button dabao — streak "1d" thai jashe
+(Button "✅ Checked in today" thai jashe, dobara aaje click nai thay)
+Step 5 — 🏅 Points/Badges test karo
+Koi pan reminder complete karo ("Done" button)
+"Dashboard" tab per jao
+Niche "Points & badges" card ma points (⭐) ane badge (🏅 "First Task Done") dekhashe
+Step 6 — 📍 Location reminder test karo
+Navu reminder banavta vakhte "📍 Remind me at a place" checkbox check karo
+"Use current location" button dabao — browser location permission mangshe, "Allow" karo
+Label lakho (e.g. "Home"), radius pasand karo, Save karo
+Have jyare tame e location ni najik pahoncho (app khulli hoi tyare), ring + voice alert aavshe
+Step 7 — 🔔 Push notification test karo
+"Profile" tab per jao
+"Push notifications" card ma "🔔 Enable on this device" dabao
+Browser "Allow notifications" pucshe — Allow karo
+Niche "Test notifications" card ma channels ma "push" checkbox check karo, Save, pachi "Send test" dabao
+Notification popup aavvi joiye (tab band hoi to pan)
+Step 8 — App install karo (PWA)
+Chrome/Edge address bar ni jamni baju ek "Install" icon (⊕) dekhashe — click karine install karo
+Have RemindAI phone/desktop per ek alag app tarike khulshe

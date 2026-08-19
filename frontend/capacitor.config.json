@@ -1,0 +1,8 @@
+{
+  "appId": "com.remindai.app",
+  "appName": "RemindAI",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
