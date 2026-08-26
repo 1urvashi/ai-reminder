@@ -7,6 +7,24 @@ import ReminderForm from '../components/ReminderForm';
 
 const FILTERS = ['upcoming', 'overdue', 'missed', 'completed', 'all'];
 
+// One-tap templates for common Gujarat small-business reminder needs —
+// pre-fills the form (title/recurrence/category); the owner just sets the
+// time (defaults to tomorrow 10am) and saves.
+const BUSINESS_PRESETS = [
+  { key: 'payment', icon: '💰', titleKey: 'presets.payment', recurrence: 'weekly' },
+  { key: 'gst', icon: '📋', titleKey: 'presets.gst', recurrence: 'monthly' },
+  { key: 'stock', icon: '📦', titleKey: 'presets.stock', recurrence: 'weekly' },
+  { key: 'followup', icon: '🤝', titleKey: 'presets.followup', recurrence: 'none' },
+  { key: 'staffcheck', icon: '👥', titleKey: 'presets.staffcheck', recurrence: 'daily' },
+];
+
+function tomorrowAt(hour) {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+}
+
 function matchesFilter(reminder, filter) {
   if (filter === 'all') return true;
   if (filter === 'completed') return reminder.completed;
@@ -22,6 +40,7 @@ export default function Reminders() {
   const [staff, setStaff] = useState([]);
   const [filter, setFilter] = useState('upcoming');
   const [editing, setEditing] = useState(null);
+  const [presetDraft, setPresetDraft] = useState(null);
   const [error, setError] = useState('');
   const tz = user?.timezone;
   const staffNameById = Object.fromEntries(staff.map((s) => [s.id, s.name]));
@@ -46,7 +65,19 @@ export default function Reminders() {
 
   async function createReminder(payload) {
     await client.post('/reminders', payload);
+    setPresetDraft(null);
     load();
+  }
+
+  function applyPreset(preset) {
+    setEditing(null);
+    setPresetDraft({
+      key: `${preset.key}-${Date.now()}`,
+      title: t(preset.titleKey),
+      datetime: tomorrowAt(10),
+      recurrence: preset.recurrence,
+      category: t('presets.category'),
+    });
   }
 
   async function saveEdit(payload) {
@@ -75,12 +106,23 @@ export default function Reminders() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="card">
+        <h3 style={{ marginTop: 0 }}>{t('presets.title')}</h3>
+        <div className="row" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          {BUSINESS_PRESETS.map((p) => (
+            <button key={p.key} type="button" className="btn btn-sm" onClick={() => applyPreset(p)}>
+              {p.icon} {t(p.titleKey)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
         <h3 style={{ marginTop: 0 }}>{editing ? t('reminders.editing') : t('reminders.new')}</h3>
         <ReminderForm
-          key={editing ? editing.id : 'new'}
-          initial={editing}
+          key={editing ? editing.id : presetDraft ? presetDraft.key : 'new'}
+          initial={editing || presetDraft}
           onSubmit={editing ? saveEdit : createReminder}
-          onCancel={editing ? () => setEditing(null) : null}
+          onCancel={editing ? () => setEditing(null) : presetDraft ? () => setPresetDraft(null) : null}
           staffOptions={staff}
         />
       </div>
@@ -121,6 +163,9 @@ export default function Reminders() {
               <span className={`rem-title ${r.completed ? 'done' : ''}`}>{r.title}</span>
               <span className="row" style={{ gap: '0.3rem' }}>
                 {r.missed && !r.completed && <span className="badge badge-high">{t('reminders.missedBadge')}</span>}
+                {r.escalate && r.escalationStage > 0 && !r.completed && (
+                  <span className="badge badge-high">🚨 {t('reminders.escalating', { stage: r.escalationStage })}</span>
+                )}
                 <span className={`badge badge-${r.priority}`}>{r.priority}</span>
               </span>
             </div>

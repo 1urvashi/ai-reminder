@@ -33,6 +33,12 @@ const userSchema = new mongoose.Schema(
     // milestone keys (see services/gamification.js) earned once and kept forever.
     points: { type: Number, default: 0 },
     badges: [{ type: String }],
+    // Optional backup contact (family/caregiver) for the escalation engine's
+    // final stage — notified when a reminder is repeatedly unacknowledged.
+    caregiver: {
+      name: { type: String, default: '', trim: true },
+      phone: { type: String, default: '', trim: true },
+    },
   },
   { timestamps: true }
 );

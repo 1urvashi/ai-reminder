@@ -21,7 +21,7 @@ export async function getProfile(req, res) {
 }
 
 export async function updateProfile(req, res) {
-  const { name, timezone, avatarUrl, phone, channels } = req.body;
+  const { name, timezone, avatarUrl, phone, channels, caregiver } = req.body;
 
   const update = {};
   if (name !== undefined) update.name = name;
@@ -41,6 +41,18 @@ export async function updateProfile(req, res) {
       return res.status(400).json({ message: 'channels must be an object' });
     }
     Object.assign(update, buildChannelUpdate(channels));
+  }
+
+  if (caregiver !== undefined) {
+    if (typeof caregiver !== 'object' || caregiver === null) {
+      return res.status(400).json({ message: 'caregiver must be an object' });
+    }
+    const caregiverPhone = String(caregiver.phone || '').trim();
+    if (caregiverPhone !== '' && !E164_PATTERN.test(caregiverPhone)) {
+      return res.status(400).json({ message: 'caregiver.phone must be E.164 format, e.g. +919876543210' });
+    }
+    update['caregiver.name'] = String(caregiver.name || '').trim();
+    update['caregiver.phone'] = caregiverPhone;
   }
 
   const user = await User.findByIdAndUpdate(req.userId, update, {

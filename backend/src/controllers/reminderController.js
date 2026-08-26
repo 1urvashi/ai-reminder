@@ -33,6 +33,8 @@ function serialize(reminder) {
     streak: reminder.streak,
     longestStreak: reminder.longestStreak,
     lastCheckinDate: reminder.lastCheckinDate,
+    escalate: reminder.escalate,
+    escalationStage: reminder.escalationStage,
     location: reminder.location,
   };
 }
@@ -103,6 +105,9 @@ function readOptionalFields(body) {
   }
   if (body.habit !== undefined) {
     update.habit = Boolean(body.habit);
+  }
+  if (body.escalate !== undefined) {
+    update.escalate = Boolean(body.escalate);
   }
   if (body.location !== undefined) {
     if (body.location === null) {
@@ -256,6 +261,8 @@ export async function snoozeReminder(req, res) {
   reminder.completed = false;
   reminder.missed = false;
   reminder.status = 'pending';
+  reminder.escalationStage = 0;
+  reminder.lastEscalatedAt = null;
   await reminder.save();
   res.json({ reminder: serialize(reminder) });
 }
@@ -269,6 +276,8 @@ export async function completeReminder(req, res) {
   reminder.completed = true;
   reminder.missed = false;
   reminder.status = 'completed';
+  reminder.escalationStage = 0;
+  reminder.lastEscalatedAt = null;
   await reminder.save();
 
   if (!wasCompleted) {
@@ -352,6 +361,10 @@ export async function updateReminderStatus(req, res) {
   }
   reminder.completed = status === 'completed';
   reminder.missed = false;
+  if (reminder.completed) {
+    reminder.escalationStage = 0;
+    reminder.lastEscalatedAt = null;
+  }
   await reminder.save();
 
   if (fromStatus !== 'completed' && status === 'completed') {
@@ -406,6 +419,8 @@ export async function rescheduleMissed(req, res) {
     reminder.datetime = target;
     reminder.firedAt = null;
     reminder.missed = false;
+    reminder.escalationStage = 0;
+    reminder.lastEscalatedAt = null;
     reminder.rescheduleCount += 1;
     await reminder.save();
     updated.push(serialize(reminder));

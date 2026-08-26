@@ -3,7 +3,10 @@ import client from '../api/client';
 import { useNotificationsContext } from '../context/NotificationsContext';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useI18n } from '../i18n/I18nContext';
-import { startRingtone, stopRingtone } from '../utils/ringtone';
+import { createRingtone } from '../utils/ringtone';
+import { speak } from '../utils/speak';
+
+const ringtone = createRingtone();
 
 const SPEECH_LANG = { en: 'en-IN', hi: 'hi-IN', gu: 'gu-IN' };
 
@@ -25,19 +28,6 @@ function matchIntent(text) {
   if (SNOOZE_WORDS.some((w) => lower.includes(w))) return 'snooze';
   if (DONE_WORDS.some((w) => lower.includes(w))) return 'done';
   return 'ack';
-}
-
-function speak(text, lang, onEnd) {
-  if (typeof window.speechSynthesis === 'undefined') {
-    onEnd?.();
-    return;
-  }
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = lang;
-  utterance.onend = () => onEnd?.();
-  utterance.onerror = () => onEnd?.();
-  window.speechSynthesis.speak(utterance);
 }
 
 // A free, in-browser "AI is calling you" experience: rings (synthesized tone,
@@ -70,14 +60,14 @@ export default function IncomingCallOverlay() {
     if (current) {
       setPhase('ringing');
       setHeard('');
-      startRingtone();
-      return () => stopRingtone();
+      ringtone.start();
+      return () => ringtone.stop();
     }
     return undefined;
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function advanceQueue() {
-    stopRingtone();
+    ringtone.stop();
     speech.stop();
     window.speechSynthesis?.cancel();
     setQueue((prev) => prev.slice(1));
@@ -103,7 +93,7 @@ export default function IncomingCallOverlay() {
   }
 
   function handleAnswer() {
-    stopRingtone();
+    ringtone.stop();
     setPhase('speaking');
     const speechLang = SPEECH_LANG[lang] || 'en-IN';
     speak(current.message || current.title, speechLang, () => {
@@ -119,7 +109,7 @@ export default function IncomingCallOverlay() {
 
   function handleDecline() {
     if (!current) return;
-    stopRingtone();
+    ringtone.stop();
     window.speechSynthesis?.cancel();
     markRead(current.id);
     advanceQueue();

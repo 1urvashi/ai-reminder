@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { distanceMeters } from '../utils/geo';
-import { startRingtone, stopRingtone } from '../utils/ringtone';
+import { createRingtone } from '../utils/ringtone';
 
+const ringtone = createRingtone();
 const POLL_MS = 2 * 60 * 1000;
 
 // Free, client-side geofencing: while the app is open (or installed as a
@@ -39,8 +40,8 @@ export default function LocationWatcher() {
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         new Notification('RemindAI', { body, icon: '/favicon.svg' });
       }
-      startRingtone();
-      setTimeout(stopRingtone, 2500);
+      ringtone.start();
+      setTimeout(ringtone.stop, 2500);
       if (typeof window.speechSynthesis !== 'undefined') {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(body));
       }

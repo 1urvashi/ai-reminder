@@ -1,6 +1,7 @@
 import { runChatTurn } from '../services/chatService.js';
 import { toClientError } from '../services/aiError.js';
 import { parseReminderText } from '../services/localReminderParser.js';
+import { detectQuestionType, answerBusinessQuestion } from '../services/businessQA.js';
 import User from '../models/User.js';
 import Reminder from '../models/Reminder.js';
 
@@ -50,6 +51,18 @@ export async function sendMessage(req, res) {
 
   const user = await User.findById(req.userId).select('timezone');
   const timeZone = user?.timezone || 'UTC';
+
+  // Status questions ("what's pending today?", "staff status?") are
+  // answered directly from the database — free, instant, and works even
+  // when the AI is unavailable. Only reminder-creation requests fall
+  // through to the AI/local-parsing flow below.
+  const questionType = detectQuestionType(message);
+  if (questionType) {
+    const answer = await answerBusinessQuestion(questionType, req.userId);
+    if (answer) {
+      return res.json({ reply: answer, history: history || [], reminders: [] });
+    }
+  }
 
   try {
     const result = await runChatTurn(req.userId, history || [], message, timeZone);

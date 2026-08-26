@@ -36,3 +36,16 @@ export function sayAndHangup(text) {
     '</Response>'
   );
 }
+
+// Reply to an inbound WhatsApp/SMS message. This is a free-form REPLY within
+// the sender's own session — Twilio allows this without WhatsApp Business
+// template approval (that's only required for messages a business sends
+// unprompted).
+export function messageReply(text) {
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<Response>' +
+    `<Message>${escapeXml(text)}</Message>` +
+    '</Response>'
+  );
+}

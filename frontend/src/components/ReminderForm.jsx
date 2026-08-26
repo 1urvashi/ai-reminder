@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n/I18nContext';
-import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { useWhisperTranscription } from '../hooks/useWhisperTranscription';
 import { parseReminderText } from '../utils/parseReminderText';
+import { speak } from '../utils/speak';
+import { formatDateTime } from '../utils/format';
 
-const SPEECH_LANG = { en: 'en-IN', hi: 'hi-IN', gu: 'gu-IN' };
+const WHISPER_LANG = { en: 'en', hi: 'hi', gu: 'gu' };
+const TTS_LANG = { en: 'en-IN', hi: 'hi-IN', gu: 'gu-IN' };
+
+const YES_WORDS = ['yes', 'ha', 'haa', 'yeah', 'yep', 'correct', 'sahi', 'हाँ', 'हा', 'ठीक है', 'સાચું', 'હા', 'બરાબર'];
+const NO_WORDS = ['no', 'na', 'nahi', 'nope', 'wrong', 'galat', 'नहीं', 'ना', 'ના', 'નહીં', 'ખોટું'];
 
 const EMPTY = {
   title: '',
@@ -19,6 +25,7 @@ const EMPTY = {
   assignedTo: '',
   habit: false,
   location: null,
+  escalate: false,
 };
 
 const RADIUS_OPTIONS = [100, 200, 500, 1000];
@@ -52,6 +59,7 @@ function fromInitial(initial) {
     assignedTo: initial.assignedTo || '',
     habit: Boolean(initial.habit),
     location: initial.location || null,
+    escalate: Boolean(initial.escalate),
   };
 }
 
@@ -70,6 +78,7 @@ function toPayload(form) {
     assignedTo: form.assignedTo || null,
     habit: form.habit,
     location: form.location,
+    escalate: form.escalate,
   };
 }
 
@@ -79,17 +88,25 @@ export default function ReminderForm({ initial, onSubmit, onCancel, staffOptions
   const [error, setError] = useState('');
   const [locating, setLocating] = useState(false);
   const [parsing, setParsing] = useState(false);
-  const speech = useSpeechRecognition();
+  const [confirmPhase, setConfirmPhase] = useState('idle'); // idle | asking | listening
+  const whisper = useWhisperTranscription();
   const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
   const recurring = form.recurrence !== 'none';
 
   // Free, local parsing (no AI API call) — good-enough guess that the user
-  // reviews/edits in the form before saving.
-  function handleVoiceTranscript(transcript) {
+  // reviews/edits in the form before saving. Shared by the mic (speech
+  // transcript) and the "Parse" button (whatever's typed in the title box) —
+  // typing is always accurate, so it's the reliable fallback when the
+  // browser's speech recognition mishears Gujarati/Hindi. Returns the
+  // parsed fields (or null on failure) so the mic path can drive the
+  // voice-confirmation loop without waiting on React state to settle.
+  function applyParsedText(text) {
     setParsing(true);
     setError('');
+    let parsed = null;
     try {
-      const f = parseReminderText(transcript);
+      const f = parseReminderText(text);
+      parsed = f;
       setForm((prev) => ({
         ...prev,
         title: f.title || prev.title,
@@ -98,23 +115,90 @@ export default function ReminderForm({ initial, onSubmit, onCancel, staffOptions
         priority: f.priority || prev.priority,
       }));
     } catch {
-      setForm((prev) => ({ ...prev, title: transcript }));
+      setForm((prev) => ({ ...prev, title: text }));
       setError('Could not understand the date/time — filled the title, please set it manually');
     } finally {
       setParsing(false);
     }
+    return parsed;
+  }
+
+  // Fully hands-free loop: after the mic parses a reminder, the AI reads it
+  // back and listens for a yes/no — so someone who doesn't want to look at
+  // or touch the screen never has to. Built directly from the freshly
+  // parsed fields (not the `form` state) so it can't submit a stale value
+  // while waiting on speech/listening delays.
+  async function confirmByVoice(parsed) {
+    const ttsLang = TTS_LANG[lang] || 'en-IN';
+    const whisperLang = WHISPER_LANG[lang] || 'en';
+    const when = formatDateTime(parsed.datetime);
+    const question = t('form.confirmQuestion', { title: parsed.title, when });
+
+    setConfirmPhase('asking');
+    speak(question, ttsLang, () => {
+      setConfirmPhase('listening');
+      whisper.start(whisperLang, async (answer) => {
+        const lower = answer.toLowerCase();
+        const isYes = YES_WORDS.some((w) => lower.includes(w));
+        const isNo = NO_WORDS.some((w) => lower.includes(w));
+        setConfirmPhase('idle');
+
+        if (isYes && !isNo) {
+          try {
+            await onSubmit({
+              title: parsed.title.trim(),
+              datetime: new Date(parsed.datetime).toISOString(),
+              recurrence: parsed.recurrence,
+              leadMinutes: 0,
+              priority: parsed.priority,
+              category: '',
+              recurrenceEnd: null,
+              recurrenceCount: null,
+              notes: '',
+              subtasks: [],
+              assignedTo: null,
+              habit: false,
+              location: null,
+              escalate: false,
+            });
+            speak(t('form.confirmSaved'), ttsLang);
+            if (!initial) setForm({ ...EMPTY });
+          } catch (err) {
+            setError(err.response?.data?.message || 'Could not save reminder');
+          }
+        } else {
+          setError(t('form.confirmFallback'));
+        }
+      });
+    });
+  }
+
+  function handleVoiceTranscript(transcript) {
+    const parsed = applyParsedText(transcript);
+    if (parsed) {
+      confirmByVoice(parsed);
+    }
   }
 
   function handleMicClick() {
-    if (speech.listening) {
-      speech.stop();
+    if (whisper.status === 'recording') {
+      whisper.stop();
       return;
     }
-    speech.start(SPEECH_LANG[lang] || 'en-IN', handleVoiceTranscript);
+    whisper.start(WHISPER_LANG[lang] || 'en', handleVoiceTranscript);
+  }
+
+  function handleParseTyped() {
+    if (!form.title.trim()) return;
+    applyParsedText(form.title);
   }
 
   function toggleHabit(e) {
     setForm((prev) => ({ ...prev, habit: e.target.checked }));
+  }
+
+  function toggleEscalate(e) {
+    setForm((prev) => ({ ...prev, escalate: e.target.checked }));
   }
 
   function toggleLocation(e) {
@@ -197,26 +281,50 @@ export default function ReminderForm({ initial, onSubmit, onCancel, staffOptions
             onChange={set('title')}
             required
           />
-          {speech.supported && (
+          {whisper.supported && (
             <button
               type="button"
-              className={`btn btn-sm ${speech.listening ? 'btn-danger' : ''}`}
+              className={`btn btn-sm ${whisper.status === 'recording' ? 'btn-danger' : ''}`}
               onClick={handleMicClick}
-              disabled={parsing}
+              disabled={parsing || whisper.status === 'loading' || whisper.status === 'transcribing'}
               title={t('form.voiceHint')}
             >
-              {parsing ? '…' : speech.listening ? '⏹️' : '🎙️'}
+              {whisper.status === 'loading' || whisper.status === 'transcribing' || parsing
+                ? '…'
+                : whisper.status === 'recording'
+                  ? '⏹️'
+                  : '🎙️'}
             </button>
           )}
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={handleParseTyped}
+            disabled={parsing || !form.title.trim()}
+            title={t('form.parseHint')}
+          >
+            ✨
+          </button>
         </div>
-        {speech.supported && !speech.listening && !parsing && (
+        {whisper.supported && whisper.status === 'idle' && (
           <small className="muted">{t('form.voiceHint')}</small>
         )}
-        {speech.listening && (
-          <small className="muted">
-            🎙️ {t('form.listening')}
-            {speech.interim && <> — “{speech.interim}”</>}
-          </small>
+        <small className="muted" style={{ display: 'block' }}>{t('form.parseHint')}</small>
+        {whisper.status === 'loading' && (
+          <small className="muted">{t('form.voiceModelLoading', { percent: whisper.progress })}</small>
+        )}
+        {whisper.status === 'recording' && confirmPhase === 'idle' && (
+          <small className="muted">🎙️ {t('form.voiceRecording')}</small>
+        )}
+        {whisper.status === 'transcribing' && confirmPhase === 'idle' && (
+          <small className="muted">{t('form.voiceParsing')}</small>
+        )}
+        {confirmPhase === 'asking' && <small className="muted">🔊 {t('form.confirmAsking')}</small>}
+        {confirmPhase === 'listening' && (
+          <small className="muted">🎙️ {t('form.confirmListening')}</small>
+        )}
+        {whisper.error && (
+          <small className="muted" style={{ color: 'var(--danger)' }}>{whisper.error}</small>
         )}
         {parsing && <small className="muted">{t('form.voiceParsing')}</small>}
       </div>
@@ -259,6 +367,14 @@ export default function ReminderForm({ initial, onSubmit, onCancel, staffOptions
           <input type="checkbox" checked={form.habit} onChange={toggleHabit} />
           {t('form.habit')}
         </label>
+      </div>
+
+      <div className="field">
+        <label className="row text-sm">
+          <input type="checkbox" checked={form.escalate} onChange={toggleEscalate} />
+          {t('form.escalate')}
+        </label>
+        {form.escalate && <small className="muted">{t('form.escalateHint')}</small>}
       </div>
 
       <div className="field">

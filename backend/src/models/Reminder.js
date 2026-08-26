@@ -56,6 +56,14 @@ const reminderSchema = new mongoose.Schema(
     streak: { type: Number, default: 0 },
     longestStreak: { type: Number, default: 0 },
     lastCheckinDate: { type: String, default: null },
+    // Escalation: when enabled, an un-acknowledged reminder keeps nudging
+    // through progressively more insistent channels instead of firing once
+    // and going quiet. escalationStage tracks how far the CURRENT occurrence
+    // has escalated (0 = not yet); reset whenever it (re)fires, completes,
+    // or is snoozed. See services/escalationService.js for the ladder.
+    escalate: { type: Boolean, default: false },
+    escalationStage: { type: Number, default: 0 },
+    lastEscalatedAt: { type: Date, default: null },
     // Optional geofence: when set, the app alerts the user in-browser when
     // they come within radiusMeters of {lat, lng}. Client-side only — the
     // server just stores it.

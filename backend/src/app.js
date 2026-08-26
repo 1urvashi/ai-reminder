@@ -6,6 +6,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import reminderRoutes from './routes/reminderRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import voiceRoutes from './routes/voiceRoutes.js';
+import whatsappRoutes from './routes/whatsappRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
 import automationRoutes from './routes/automationRoutes.js';
 import pushRoutes from './routes/pushRoutes.js';
@@ -23,6 +24,7 @@ export function createApp() {
   app.use('/api/reminders', reminderRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/voice', voiceRoutes);
+  app.use('/api/whatsapp', whatsappRoutes);
   app.use('/api/staff', staffRoutes);
   app.use('/api/automation', automationRoutes);
   app.use('/api/push', pushRoutes);

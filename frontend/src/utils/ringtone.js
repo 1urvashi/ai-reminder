@@ -1,7 +1,5 @@
 // A classic two-tone "ring-ring" pattern synthesized with the Web Audio API —
 // no audio file, no third-party asset, works fully offline and free.
-let audioCtx = null;
-let timerId = null;
 
 function playPulse(ctx, startAt, freq, duration) {
   const osc = ctx.createOscillator();
@@ -16,28 +14,38 @@ function playPulse(ctx, startAt, freq, duration) {
   osc.stop(startAt + duration + 0.05);
 }
 
-function ringCycle() {
-  if (!audioCtx) return;
-  const now = audioCtx.currentTime;
-  // Two quick tones (like a classic phone ring), then a pause before the loop repeats.
-  playPulse(audioCtx, now, 480, 0.35);
-  playPulse(audioCtx, now + 0.4, 440, 0.35);
-}
+// Each caller gets its OWN independent ringer (own AudioContext/timer). Two
+// unrelated features (e.g. the "AI is calling" overlay and the location
+// proximity alert) must never share start/stop state — one finishing early
+// or late would otherwise silence or restart the other's ring.
+export function createRingtone() {
+  let audioCtx = null;
+  let timerId = null;
 
-export function startRingtone() {
-  if (timerId) return; // already ringing
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  ringCycle();
-  timerId = setInterval(ringCycle, 2200);
-}
+  function ringCycle() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    playPulse(audioCtx, now, 480, 0.35);
+    playPulse(audioCtx, now + 0.4, 440, 0.35);
+  }
 
-export function stopRingtone() {
-  if (timerId) {
-    clearInterval(timerId);
-    timerId = null;
+  function start() {
+    if (timerId) return; // already ringing
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    ringCycle();
+    timerId = setInterval(ringCycle, 2200);
   }
-  if (audioCtx) {
-    audioCtx.close().catch(() => {});
-    audioCtx = null;
+
+  function stop() {
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+    if (audioCtx) {
+      audioCtx.close().catch(() => {});
+      audioCtx = null;
+    }
   }
+
+  return { start, stop };
 }

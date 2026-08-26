@@ -7,3 +7,4 @@ dist/
 dist-ssr/
 android/
 .DS_Store
+.claude/

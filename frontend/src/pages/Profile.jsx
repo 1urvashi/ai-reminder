@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../i18n/I18nContext';
 import client from '../api/client';
 import { isPushSupported, getPushSubscription, subscribeToPush, unsubscribeFromPush } from '../utils/push';
 
@@ -14,6 +15,7 @@ const STATUS_STYLE = {
 };
 
 export default function Profile() {
+  const { t } = useI18n();
   const { user, updateProfile, changePassword } = useAuth();
   const [testReport, setTestReport] = useState(null);
   const [testing, setTesting] = useState(false);
@@ -37,6 +39,8 @@ export default function Profile() {
   const [whatsapp, setWhatsapp] = useState(user?.channels?.whatsapp ?? false);
   const [call, setCall] = useState(user?.channels?.call ?? false);
   const [push, setPush] = useState(user?.channels?.push ?? true);
+  const [caregiverName, setCaregiverName] = useState(user?.caregiver?.name || '');
+  const [caregiverPhone, setCaregiverPhone] = useState(user?.caregiver?.phone || '');
   const [status, setStatus] = useState('');
 
   const [pushSubscribed, setPushSubscribed] = useState(false);
@@ -79,7 +83,13 @@ export default function Profile() {
     e.preventDefault();
     setStatus('');
     try {
-      await updateProfile({ name, timezone, phone, channels: { email, whatsapp, call, push } });
+      await updateProfile({
+        name,
+        timezone,
+        phone,
+        channels: { email, whatsapp, call, push },
+        caregiver: { name: caregiverName, phone: caregiverPhone },
+      });
       setStatus('ok:Saved');
     } catch (err) {
       setStatus('err:' + (err.response?.data?.message || 'Failed to save'));
@@ -129,6 +139,25 @@ export default function Profile() {
             <label className="row text-sm"><input type="checkbox" checked={call} onChange={(e) => setCall(e.target.checked)} /> AI phone call</label>
             <label className="row text-sm"><input type="checkbox" checked={push} onChange={(e) => setPush(e.target.checked)} /> Browser push notification</label>
             <small className="muted">WhatsApp/calls need a phone number + Twilio configured; email needs SMTP configured.</small>
+          </div>
+          <div className="field">
+            <label>{t('profile.caregiverTitle')}</label>
+            <small className="muted" style={{ display: 'block', marginBottom: '0.4rem' }}>
+              {t('profile.caregiverDesc')}
+            </small>
+            <input
+              className="input"
+              style={{ marginBottom: '0.5rem' }}
+              placeholder={t('profile.caregiverName')}
+              value={caregiverName}
+              onChange={(e) => setCaregiverName(e.target.value)}
+            />
+            <input
+              className="input"
+              placeholder={t('profile.caregiverPhone')}
+              value={caregiverPhone}
+              onChange={(e) => setCaregiverPhone(e.target.value)}
+            />
           </div>
           {banner(status)}
           <button type="submit" className="btn btn-primary">Save</button>

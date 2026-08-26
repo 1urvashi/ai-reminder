@@ -74,3 +74,16 @@ Notification popup aavvi joiye (tab band hoi to pan)
 Step 8 — App install karo (PWA)
 Chrome/Edge address bar ni jamni baju ek "Install" icon (⊕) dekhashe — click karine install karo
 Have RemindAI phone/desktop per ek alag app tarike khulshe
+
+
+Ha, koi pan user aa rite kari shakshe — aa PWA (installable web app) feature chhе je hu je website banavi chhе tena manifest sathe judાયેલુ chhе, aa specific computer sathe nahi.
+
+Koi pan bijo user aa steps follow kari shake:
+
+https://ai-reminder-frontend-c6k5.onrender.com (deployed link) Chrome ya Edge browser ma khole
+Address bar ni jamni baju ⊕ (Install) icon dekhashe — tena per click kare
+"Install RemindAI?" popup aave — "Install" dabave
+Automatically tena taskbar/desktop (ya Android phone hoi to home screen) per RemindAI icon ban जાય
+Kaam kare chhе:
+
+✅ Windows/Mac par Chrome, Edge browser

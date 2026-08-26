@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import { generateNudge } from './nudgeService.js';
 import { computeRecurrenceUpdate } from './recurrence.js';
 import { dispatchExternalChannels } from './channels.js';
+import { runEscalationTick } from './escalationService.js';
 
 // Background automation: on each tick it finds reminders whose time has passed
 // and that have not yet been notified for the current occurrence, then creates
@@ -16,16 +17,22 @@ let timer = null;
 let running = false;
 
 // A reminder needs a nudge when its effective fire time (datetime minus the
-// lead-minutes) has passed and the current occurrence has not been fired yet
-// (firedAt is null or predates the current datetime).
+// lead-minutes) has passed and the current occurrence has not been fired
+// yet. "Not yet fired" is strictly firedAt === null — every path that
+// re-arms a reminder for a new occurrence (recurring roll-forward, snooze,
+// reschedule, editing datetime) already resets firedAt to null. A previous
+// version also matched `firedAt < datetime`, intending to catch rolled-over
+// occurrences, but that's already covered by the null reset — and since
+// leadMinutes makes firedAt land BEFORE datetime by design, that clause
+// made every lead-time reminder re-fire on every single scheduler tick
+// until real time caught up to datetime (e.g. a 2-minute lead firing 3x,
+// one minute apart, before finally going quiet).
 async function findDueReminders(now) {
   return Reminder.find({
     completed: false,
+    firedAt: null,
     $expr: {
-      $and: [
-        { $lte: [{ $subtract: ['$datetime', { $multiply: ['$leadMinutes', 60000] }] }, now] },
-        { $or: [{ $eq: ['$firedAt', null] }, { $lt: ['$firedAt', '$datetime'] }] },
-      ],
+      $lte: [{ $subtract: ['$datetime', { $multiply: ['$leadMinutes', 60000] }] }, now],
     },
   })
     .sort({ datetime: 1 })
@@ -56,6 +63,9 @@ async function fireReminder(reminder, now) {
   }
 
   reminder.firedAt = now;
+  // A fresh occurrence starts its own escalation clock from zero.
+  reminder.escalationStage = 0;
+  reminder.lastEscalatedAt = null;
 
   // Recurring reminders roll forward to their next occurrence right away —
   // they don't sit in a "missed" state. One-time reminders stay pending;
@@ -99,6 +109,7 @@ export async function runSchedulerTick(now = new Date()) {
   }
 
   await markMissedReminders(now);
+  await runEscalationTick(now).catch((err) => console.error('Escalation tick failed:', err.message));
   return fired;
 }
 

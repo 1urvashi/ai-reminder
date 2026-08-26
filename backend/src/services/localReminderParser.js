@@ -22,8 +22,50 @@ const NUMBER_WORD_PATTERN = Object.keys(NUMBER_WORDS)
   .sort((a, b) => b.length - a.length)
   .join('|');
 
+const MONTHS = [
+  { names: ['january', 'jan'], month: 0 },
+  { names: ['february', 'feb'], month: 1 },
+  { names: ['march', 'mar'], month: 2 },
+  { names: ['april', 'apr'], month: 3 },
+  { names: ['may'], month: 4 },
+  { names: ['june', 'jun'], month: 5 },
+  { names: ['july', 'jul'], month: 6 },
+  { names: ['august', 'aug'], month: 7 },
+  { names: ['september', 'sep', 'sept'], month: 8 },
+  { names: ['october', 'oct'], month: 9 },
+  { names: ['november', 'nov'], month: 10 },
+  { names: ['december', 'dec'], month: 11 },
+];
+const MONTH_NAME_PATTERN = MONTHS.flatMap((m) => m.names).join('|');
+
 function stripAll(text, regex) {
   return text.replace(regex, ' ');
+}
+
+// "21 august" / "august 21st" / "21st aug" — an explicit calendar date.
+// Rolls to next year if that date already passed this year.
+function findMonthDate(text, now) {
+  const dayFirst = text.match(
+    new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_NAME_PATTERN})\\b`, 'i')
+  );
+  const monthFirst = !dayFirst
+    ? text.match(new RegExp(`\\b(${MONTH_NAME_PATTERN})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'i'))
+    : null;
+  const match = dayFirst || monthFirst;
+  if (!match) return null;
+
+  const day = parseInt(dayFirst ? match[1] : match[2], 10);
+  const monthName = (dayFirst ? match[2] : match[1]).toLowerCase();
+  const monthDef = MONTHS.find((m) => m.names.includes(monthName));
+  if (!monthDef || day < 1 || day > 31) return null;
+
+  let year = now.getFullYear();
+  let candidate = new Date(year, monthDef.month, day);
+  if (candidate.getTime() < new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) {
+    year += 1;
+    candidate = new Date(year, monthDef.month, day);
+  }
+  return { phrase: match[0], date: candidate };
 }
 
 function findWeekday(text) {
@@ -119,13 +161,20 @@ export function parseReminderText(rawText, now = new Date()) {
       text = stripAll(text, /\b(today|aaj)\b|આજે|आज/g);
       dateSet = true;
     } else {
-      const wd = findWeekday(text);
-      if (wd) {
-        let diff = (wd.target - result.getDay() + 7) % 7;
-        if (diff === 0 && wd.isNext) diff = 7;
-        result.setDate(result.getDate() + diff);
-        text = text.replace(wd.phrase, ' ');
+      const monthDate = findMonthDate(text, now);
+      if (monthDate) {
+        result.setFullYear(monthDate.date.getFullYear(), monthDate.date.getMonth(), monthDate.date.getDate());
+        text = text.replace(monthDate.phrase, ' ');
         dateSet = true;
+      } else {
+        const wd = findWeekday(text);
+        if (wd) {
+          let diff = (wd.target - result.getDay() + 7) % 7;
+          if (diff === 0 && wd.isNext) diff = 7;
+          result.setDate(result.getDate() + diff);
+          text = text.replace(wd.phrase, ' ');
+          dateSet = true;
+        }
       }
     }
   }
