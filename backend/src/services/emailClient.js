@@ -1,4 +1,12 @@
+import dns from 'dns';
 import nodemailer from 'nodemailer';
+
+// Some hosts (e.g. Render) resolve smtp.gmail.com to an IPv6 address but have
+// no working IPv6 egress route, failing with ENETUNREACH. Passing `family: 4`
+// to nodemailer's transport isn't reliably honored by the underlying
+// connection — force IPv4 first at the Node DNS-resolution level instead,
+// which every socket connection in the process respects.
+dns.setDefaultResultOrder('ipv4first');
 
 // SMTP email sender. Configured entirely from environment variables; when any
 // required setting is missing it reports not-configured and callers skip email.
