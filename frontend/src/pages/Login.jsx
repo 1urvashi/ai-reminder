@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Brand from '../components/Brand';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +23,16 @@ export default function Login() {
       setError(err.response?.data?.message || 'Login failed');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleGoogle(idToken) {
+    setError('');
+    try {
+      await googleLogin(idToken);
+      navigate('/chat');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Google sign-in failed');
     }
   }
 
@@ -46,6 +57,7 @@ export default function Login() {
               {busy ? 'Logging in…' : 'Log in'}
             </button>
           </form>
+          <GoogleSignInButton onCredential={handleGoogle} onError={setError} />
         </div>
         <p className="muted text-sm" style={{ textAlign: 'center' }}>
           No account? <Link to="/register">Create one</Link>

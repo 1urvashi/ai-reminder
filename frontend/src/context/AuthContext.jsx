@@ -58,6 +58,12 @@ export function AuthProvider({ children }) {
     setUser(res.data.user);
   }
 
+  async function googleLogin(idToken) {
+    const res = await client.post('/auth/google', { idToken });
+    localStorage.setItem('token', res.data.token);
+    setUser(withTimezoneFix(res.data.user, (fields) => client.put('/users/me', fields)));
+  }
+
   function logout() {
     localStorage.removeItem('token');
     setUser(null);
@@ -75,7 +81,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, logout, updateProfile, changePassword }}
+      value={{ user, loading, login, register, googleLogin, logout, updateProfile, changePassword }}
     >
       {children}
     </AuthContext.Provider>

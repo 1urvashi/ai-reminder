@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
@@ -69,6 +70,65 @@ export async function login(req, res) {
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     return res.status(401).json({ message: 'Invalid email or password' });
+  }
+
+  const token = signToken(user._id.toString(), user.role);
+  res.json({ token, user: publicUser(user) });
+}
+
+// Verifies a Google Identity Services ID token by asking Google directly —
+// no JWT library/JWKS handling needed, just an HTTP call, matching this
+// project's existing "raw fetch over SDK" style for third-party APIs.
+async function verifyGoogleIdToken(idToken) {
+  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+  if (!res.ok) {
+    return null;
+  }
+  return res.json();
+}
+
+export async function googleLogin(req, res) {
+  const { idToken } = req.body;
+  if (!idToken) {
+    return res.status(400).json({ message: 'idToken is required' });
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    return res.status(500).json({ message: 'Google sign-in is not configured on the server' });
+  }
+
+  const payload = await verifyGoogleIdToken(idToken);
+  if (!payload) {
+    return res.status(401).json({ message: 'Invalid Google token' });
+  }
+  // The audience MUST match our own client ID — otherwise a valid Google
+  // token issued for a completely different app could be replayed here.
+  if (payload.aud !== clientId) {
+    return res.status(401).json({ message: 'Token was not issued for this app' });
+  }
+  if (payload.email_verified !== 'true' && payload.email_verified !== true) {
+    return res.status(401).json({ message: 'Google email is not verified' });
+  }
+
+  const email = String(payload.email).toLowerCase();
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+    user = await User.create({
+      name: payload.name || email.split('@')[0],
+      email,
+      passwordHash,
+      googleId: payload.sub,
+    });
+  } else if (!user.googleId) {
+    user.googleId = payload.sub;
+    await user.save();
+  }
+
+  if (!user.active) {
+    return res.status(401).json({ message: 'This account has been deactivated' });
   }
 
   const token = signToken(user._id.toString(), user.role);

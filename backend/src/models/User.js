@@ -18,6 +18,10 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
+    // Set once a Google Sign-In account is linked. Google-only accounts still
+    // get a random passwordHash at creation (schema requires one) — they just
+    // never use it, since they always sign in via Google.
+    googleId: { type: String, default: null, index: true, sparse: true },
     timezone: { type: String, default: 'UTC' },
     avatarUrl: { type: String, default: '' },
     // E.164 phone number (e.g. +919876543210) used for WhatsApp and voice calls.
