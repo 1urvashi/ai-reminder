@@ -13,19 +13,20 @@ function isUpcoming(dueAt, now) {
 function fallbackMessage(title, dueAt, timeZone, now) {
   const when = formatInTimeZone(dueAt, timeZone);
   if (isUpcoming(dueAt, now)) {
-    return `Heads up: "${title}" is coming up at ${when}. Are you ready for it?`;
+    return `This is a reminder that "${title}" is scheduled for ${when}. Please confirm once it has been completed.`;
   }
-  return `Reminder: "${title}" was scheduled for ${when}. Did you get to it, or is it still pending?`;
+  return `This is a follow-up regarding "${title}", which was scheduled for ${when}. Kindly update its status at your earliest convenience.`;
 }
 
 function buildPrompt(title, dueAt, recurrence, timeZone, now) {
   const when = formatInTimeZone(dueAt, timeZone);
   const repeats = recurrence && recurrence !== 'none' ? ` It repeats ${recurrence}.` : '';
   const framing = isUpcoming(dueAt, now)
-    ? `It is coming up at ${when}. Gently ask if they are ready.`
-    : `It was due at ${when}. Gently ask whether they have done it or if it is still pending.`;
+    ? `It is scheduled for ${when}. Ask, in a professional and courteous tone, whether they are prepared for it.`
+    : `It was due at ${when}. Ask, in a professional and courteous tone, whether it has been completed or is still pending.`;
   return (
-    'Write a single short, friendly reminder notification (max 25 words) for this task. ' +
+    'Write a single short, professionally-toned reminder notification (max 25 words) for this task, ' +
+    'as a business assistant would phrase it — polite and formal, not casual or exclamatory. ' +
     `Task: "${title}".${repeats} ${framing} Return only the message text.`
   );
 }

@@ -79,6 +79,11 @@ export default function IncomingCallOverlay() {
         await client.post(`/reminders/${notification.reminderId}/snooze`, { minutes: 10 });
       } else if (intent === 'done' && notification.reminderId) {
         await client.post(`/reminders/${notification.reminderId}/complete`);
+      } else if (notification.reminderId) {
+        // Ambiguous reply — don't falsely mark the task done, but a spoken
+        // answer of any kind should still stop escalation from calling
+        // back about this same occurrence.
+        await client.post(`/reminders/${notification.reminderId}/acknowledge`);
       }
     } catch {
       // best-effort — the call still ends even if the follow-up action fails

@@ -48,9 +48,9 @@ async function answerTodayPending(userId) {
   })
     .sort({ datetime: 1 })
     .limit(10);
-  if (reminders.length === 0) return '🎉 Aaj koi pending kaam nathi!';
+  if (reminders.length === 0) return 'Aaje koi pending kaam baki nathi.';
   const lines = reminders.map((r) => `• ${r.title} (${timeLabel(r.datetime)})`);
-  return `Aajna pending kaam (${reminders.length}):\n${lines.join('\n')}`;
+  return `Aajna pending kaam ni yaadi (${reminders.length}):\n${lines.join('\n')}`;
 }
 
 async function answerStaffStatus(userId) {
@@ -86,7 +86,7 @@ async function answerMyStats(userId) {
     completed: true,
   });
   const badgeCount = (user?.badges || []).length;
-  return `⭐ Points: ${user?.points || 0} | ✅ Total completed: ${totalCompleted} | 🏅 Badges: ${badgeCount}`;
+  return `Points: ${user?.points || 0}. Total completed tasks: ${totalCompleted}. Badges earned: ${badgeCount}.`;
 }
 
 export async function answerBusinessQuestion(questionType, userId) {

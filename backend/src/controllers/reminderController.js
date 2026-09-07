@@ -267,6 +267,28 @@ export async function snoozeReminder(req, res) {
   res.json({ reminder: serialize(reminder) });
 }
 
+// Called when the user responds to an "AI is calling" prompt at all — even
+// an unclear or "not yet" reply — so a reminder with escalation enabled
+// stops re-nudging simply because it was answered. This intentionally does
+// NOT mark the task done; only completeReminder does that. Without this,
+// any reply that didn't match a "done"/"snooze" keyword left the reminder
+// fully untouched, so the escalation engine kept firing again exactly as if
+// the call had never been answered.
+export async function acknowledgeReminder(req, res) {
+  const reminder = await Reminder.findOne(ownedOrAssigned(req));
+  if (!reminder) {
+    return res.status(404).json({ message: 'Reminder not found' });
+  }
+  // Reset to stage 0 but stamp lastEscalatedAt as *now*, not null — null
+  // would make the escalation tick fall back to the original firedAt (still
+  // in the past), so it would immediately re-escalate again on the very
+  // next tick instead of giving a fresh grace period from this response.
+  reminder.escalationStage = 0;
+  reminder.lastEscalatedAt = new Date();
+  await reminder.save();
+  res.json({ reminder: serialize(reminder) });
+}
+
 export async function completeReminder(req, res) {
   const reminder = await Reminder.findOne(ownedOrAssigned(req));
   if (!reminder) {

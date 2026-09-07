@@ -63,11 +63,19 @@ export async function incoming(req, res) {
     );
     return res
       .type('text/xml')
-      .send(messageReply(`✅ Reminder set: "${reminder.title}" for ${when}. Reply with another message anytime.`));
+      .send(
+        messageReply(
+          `Confirmed: a reminder for "${reminder.title}" has been scheduled for ${when}. Please message again for any further request.`
+        )
+      );
   } catch (err) {
     console.error('WhatsApp inbound parse failed:', err.message);
     return res
       .type('text/xml')
-      .send(messageReply("Sorry, I couldn't understand that. Try: \"remind me to X tomorrow at 6pm\"."));
+      .send(
+        messageReply(
+          'This request could not be understood. Please try a format such as: "remind me to X tomorrow at 6pm".'
+        )
+      );
   }
 }

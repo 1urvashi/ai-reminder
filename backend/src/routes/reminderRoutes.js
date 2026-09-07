@@ -7,6 +7,7 @@ import {
   updateReminderStatus,
   snoozeReminder,
   completeReminder,
+  acknowledgeReminder,
   checkinHabit,
   deleteReminder,
   rescheduleMissed,
@@ -26,6 +27,7 @@ router.put('/:id', requireAuth, asyncHandler(updateReminder));
 router.patch('/:id/status', requireAuth, asyncHandler(updateReminderStatus));
 router.post('/:id/snooze', requireAuth, asyncHandler(snoozeReminder));
 router.post('/:id/complete', requireAuth, asyncHandler(completeReminder));
+router.post('/:id/acknowledge', requireAuth, asyncHandler(acknowledgeReminder));
 router.post('/:id/checkin', requireAuth, asyncHandler(checkinHabit));
 router.delete('/:id', requireAuth, asyncHandler(deleteReminder));
 

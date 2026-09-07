@@ -24,7 +24,7 @@ async function notifyCaregiver(reminder, user) {
   if (!caregiver?.phone || !twilioConfigured()) {
     return false;
   }
-  const message = `⚠️ ${user.name || 'Someone'} hasn't responded to a reminder: "${reminder.title}". They may need a check-in.`;
+  const message = `This is a courtesy notice: ${user.name || 'Someone'} has not responded to a reminder regarding "${reminder.title}". A check-in may be appreciated.`;
   try {
     await sendWhatsApp(caregiver.phone, message);
     return true;
@@ -57,15 +57,15 @@ export async function runEscalationTick(now = new Date()) {
 
     try {
       if (nextStage.stage < STAGES.length) {
-        const message = `⏰ Still waiting: "${reminder.title}" — please mark it done or snooze it.`;
+        const message = `This is a follow-up regarding "${reminder.title}", which remains pending. Please update its status or reschedule at your convenience.`;
         await Notification.create({
           user: recipientId,
           reminder: reminder._id,
-          title: `Still pending: ${reminder.title}`,
+          title: `Follow-up: ${reminder.title}`,
           message,
           dueAt: reminder.datetime,
         });
-        await dispatchExternalChannels(user, `Still pending: ${reminder.title}`, message, reminder._id);
+        await dispatchExternalChannels(user, `Follow-up: ${reminder.title}`, message, reminder._id);
       } else {
         await notifyCaregiver(reminder, user);
       }
