@@ -154,13 +154,14 @@ async function awardCompletionPoints(userId, reminder) {
 }
 
 export async function listReminders(req, res) {
-  const filter = { $or: [{ user: req.userId }, { assignedTo: req.userId }] };
-  if (req.query.assignedTo) {
-    // Admin filtering the board down to one staff member's items.
-    filter.$or = undefined;
-    filter.assignedTo = req.query.assignedTo;
-    filter.user = req.userId;
-  }
+  // A leftover `$or: undefined` here (instead of just omitting the key) used
+  // to throw a Mongoose CastError — assigning `undefined` to a query key
+  // doesn't remove it, and Mongoose's schema-aware cast rejects `undefined`
+  // for an Array-typed operator like $or. Build a fresh filter per branch.
+  const filter = req.query.assignedTo
+    // Manager/admin/viewer filtering the board down to one team member's items.
+    ? { assignedTo: req.query.assignedTo, user: req.userId }
+    : { $or: [{ user: req.userId }, { assignedTo: req.userId }] };
   const reminders = await Reminder.find(filter).sort({ status: 1, order: 1, datetime: 1 });
   res.json({ reminders: reminders.map(serialize) });
 }

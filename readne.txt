@@ -87,3 +87,15 @@ Automatically tena taskbar/desktop (ya Android phone hoi to home screen) per Rem
 Kaam kare chhе:
 
 ✅ Windows/Mac par Chrome, Edge browser
+
+📵 Decline dabo to:
+Ringtone/call band thai jay
+Aa notification "read" mark thai jay (pacho popup nathi aavto)
+Pan reminder/task ne kai j asar nathi thato — na complete thay, na snooze thay
+Etle jo escalation (🚨 Keep reminding) ON hoi to, e reminder pacho normal rite escalate thashe (5/15/30 min pachi) — kem ke Decline etle "javab j nathi apyo" gણાय
+✅ Answer/Accept dabo to, AI boliyu pachi tame je bolo tena par depend chhе:
+"Done"/"thai gayu"/"haa"/"ho gaya" jevu bolo → Task COMPLETE mark thai jay, points male, escalation hammesha mate band
+
+"Snooze"/"pachi"/"baad"/"wait" jevu bolo → Reminder 10 minute pachi pachu set thai jay, escalation reset
+
+Kai bhi asaman/anya vastu bolo (jem "haa yaad chhе" pan clear "done" nahi) → Task complete NATHI thato, pan escalation TARAT band thai jay (fresh 5 min window male) — jo khare-kher pending hoi to pachi thi (5+ min pachi) pacho reminder aavshe, tarat nahi
