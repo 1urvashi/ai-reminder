@@ -40,14 +40,17 @@ export default function Kanban() {
   }, [load]);
 
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (['admin', 'manager', 'viewer'].includes(user?.role)) {
       client.get('/staff').then((res) => setStaff(res.data.staff)).catch(() => {});
     }
   }, [user]);
 
   const staffNameById = Object.fromEntries(staff.map((s) => [s.id, s.name]));
 
+  const readOnly = user?.role === 'viewer';
+
   async function onDragEnd(result) {
+    if (readOnly) return;
     const { source, destination, draggableId } = result;
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
@@ -78,6 +81,7 @@ export default function Kanban() {
         <h1>{t('nav.kanban')}</h1>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
+      {readOnly && <p className="muted text-sm">{t('kanban.readOnly')}</p>}
 
       {staff.length > 0 && (
         <div className="row mt" style={{ marginBottom: '1rem' }}>
@@ -105,7 +109,7 @@ export default function Kanban() {
                     <span>{grouped[col.id].length}</span>
                   </div>
                   {grouped[col.id].map((r, index) => (
-                    <Draggable draggableId={r.id} index={index} key={r.id}>
+                    <Draggable draggableId={r.id} index={index} key={r.id} isDragDisabled={readOnly}>
                       {(dragProvided, dragSnapshot) => (
                         <div
                           ref={dragProvided.innerRef}

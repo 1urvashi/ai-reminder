@@ -5,7 +5,7 @@ import { useI18n } from '../i18n/I18nContext';
 export default function Staff() {
   const { t } = useI18n();
   const [staff, setStaff] = useState([]);
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', department: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', department: '', role: 'employee' });
   const [error, setError] = useState('');
 
   function load() {
@@ -24,7 +24,7 @@ export default function Staff() {
     setError('');
     try {
       await client.post('/staff', form);
-      setForm({ name: '', email: '', password: '', phone: '', department: '' });
+      setForm({ name: '', email: '', password: '', phone: '', department: '', role: 'employee' });
       load();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not add staff member');
@@ -75,6 +75,15 @@ export default function Staff() {
               <input className="input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
             </div>
           </div>
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label>{t('staff.role')}</label>
+            <select className="select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+              <option value="manager">{t('staff.roleManager')}</option>
+              <option value="employee">{t('staff.roleEmployee')}</option>
+              <option value="viewer">{t('staff.roleViewer')}</option>
+            </select>
+            <small className="muted">{t('staff.roleHint')}</small>
+          </div>
           <button type="submit" className="btn btn-primary">{t('staff.add')}</button>
         </form>
       </div>
@@ -83,8 +92,11 @@ export default function Staff() {
         <div key={s.id} className={`rem-item ${!s.active ? 'done' : ''}`}>
           <div className="spread">
             <span className="rem-title">{s.name}</span>
-            <span className={`badge ${s.active ? 'badge-low' : 'badge-normal'}`}>
-              {s.active ? t('staff.active') : t('staff.inactive')}
+            <span className="row" style={{ gap: '0.3rem' }}>
+              <span className="badge badge-normal">{t(`staff.role${s.role.charAt(0).toUpperCase()}${s.role.slice(1)}`)}</span>
+              <span className={`badge ${s.active ? 'badge-low' : 'badge-normal'}`}>
+                {s.active ? t('staff.active') : t('staff.inactive')}
+              </span>
             </span>
           </div>
           <div className="rem-meta">

@@ -27,3 +27,13 @@ export function requireRole(...roles) {
     next();
   };
 }
+
+// Blocks any mutating action for the read-only 'viewer' role. Applied to
+// every write route (create/update/delete/status-change) on reminders —
+// viewers can see everything a manager can, but never change anything.
+export function blockViewer(req, res, next) {
+  if (req.userRole === 'viewer') {
+    return res.status(403).json({ message: 'Your role has read-only access' });
+  }
+  next();
+}

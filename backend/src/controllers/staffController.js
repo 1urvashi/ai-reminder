@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 
+const TEAM_ROLES = ['manager', 'employee', 'viewer'];
+
 function publicStaff(user) {
   return {
     id: user._id,
@@ -9,25 +11,33 @@ function publicStaff(user) {
     phone: user.phone,
     department: user.department,
     active: user.active,
+    role: user.role,
     createdAt: user.createdAt,
   };
 }
 
-// Staff members are other User documents (role: 'staff'), created by an admin
-// so reminders can be assigned to them and their progress tracked.
+// Team members are other User documents (role: manager/employee/viewer),
+// created by an admin so reminders can be assigned to them and their
+// progress tracked. Only an admin manages the roster — a manager gets
+// elevated reminder/Kanban access but not this page (see reminderController
+// and the frontend's admin-only Staff page gating).
 export async function listStaff(req, res) {
-  const staff = await User.find({ role: 'staff', createdBy: req.userId }).sort({ name: 1 });
+  const staff = await User.find({ role: { $in: TEAM_ROLES }, createdBy: req.userId }).sort({ name: 1 });
   res.json({ staff: staff.map(publicStaff) });
 }
 
 export async function createStaff(req, res) {
-  const { name, email, password, phone, department } = req.body;
+  const { name, email, password, phone, department, role } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ message: 'name, email and password are required' });
   }
   if (password.length < 8) {
     return res.status(400).json({ message: 'Password must be at least 8 characters' });
+  }
+  const teamRole = role || 'employee';
+  if (!TEAM_ROLES.includes(teamRole)) {
+    return res.status(400).json({ message: `role must be one of: ${TEAM_ROLES.join(', ')}` });
   }
 
   const existing = await User.findOne({ email: email.toLowerCase() });
@@ -40,7 +50,7 @@ export async function createStaff(req, res) {
     name,
     email,
     passwordHash,
-    role: 'staff',
+    role: teamRole,
     phone: phone || '',
     department: department || '',
     createdBy: req.userId,
@@ -56,9 +66,15 @@ export async function updateStaff(req, res) {
       update[key] = req.body[key];
     }
   }
+  if (req.body.role !== undefined) {
+    if (!TEAM_ROLES.includes(req.body.role)) {
+      return res.status(400).json({ message: `role must be one of: ${TEAM_ROLES.join(', ')}` });
+    }
+    update.role = req.body.role;
+  }
 
   const staff = await User.findOneAndUpdate(
-    { _id: req.params.id, role: 'staff', createdBy: req.userId },
+    { _id: req.params.id, role: { $in: TEAM_ROLES }, createdBy: req.userId },
     update,
     { new: true, runValidators: true }
   );
@@ -71,7 +87,7 @@ export async function updateStaff(req, res) {
 export async function deleteStaff(req, res) {
   const staff = await User.findOneAndDelete({
     _id: req.params.id,
-    role: 'staff',
+    role: { $in: TEAM_ROLES },
     createdBy: req.userId,
   });
   if (!staff) {

@@ -43,6 +43,7 @@ export default function Reminders() {
   const [presetDraft, setPresetDraft] = useState(null);
   const [error, setError] = useState('');
   const tz = user?.timezone;
+  const readOnly = user?.role === 'viewer';
   const staffNameById = Object.fromEntries(staff.map((s) => [s.id, s.name]));
   const todayKey = new Date().toISOString().slice(0, 10);
 
@@ -58,7 +59,7 @@ export default function Reminders() {
   }, []);
 
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (['admin', 'manager', 'viewer'].includes(user?.role)) {
       client.get('/staff').then((res) => setStaff(res.data.staff)).catch(() => {});
     }
   }, [user]);
@@ -104,28 +105,33 @@ export default function Reminders() {
         <h1>{t('reminders.title')}</h1>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
+      {readOnly && <p className="muted text-sm">{t('reminders.readOnly')}</p>}
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>{t('presets.title')}</h3>
-        <div className="row" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-          {BUSINESS_PRESETS.map((p) => (
-            <button key={p.key} type="button" className="btn btn-sm" onClick={() => applyPreset(p)}>
-              {p.icon} {t(p.titleKey)}
-            </button>
-          ))}
+      {!readOnly && (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>{t('presets.title')}</h3>
+          <div className="row" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+            {BUSINESS_PRESETS.map((p) => (
+              <button key={p.key} type="button" className="btn btn-sm" onClick={() => applyPreset(p)}>
+                {p.icon} {t(p.titleKey)}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>{editing ? t('reminders.editing') : t('reminders.new')}</h3>
-        <ReminderForm
-          key={editing ? editing.id : presetDraft ? presetDraft.key : 'new'}
-          initial={editing || presetDraft}
-          onSubmit={editing ? saveEdit : createReminder}
-          onCancel={editing ? () => setEditing(null) : presetDraft ? () => setPresetDraft(null) : null}
-          staffOptions={staff}
-        />
-      </div>
+      {!readOnly && (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>{editing ? t('reminders.editing') : t('reminders.new')}</h3>
+          <ReminderForm
+            key={editing ? editing.id : presetDraft ? presetDraft.key : 'new'}
+            initial={editing || presetDraft}
+            onSubmit={editing ? saveEdit : createReminder}
+            onCancel={editing ? () => setEditing(null) : presetDraft ? () => setPresetDraft(null) : null}
+            staffOptions={staff}
+          />
+        </div>
+      )}
 
       <div className="row mt-2" style={{ marginBottom: '1rem' }}>
         {FILTERS.map((f) => (
@@ -141,7 +147,7 @@ export default function Reminders() {
         ))}
       </div>
 
-      {filter === 'missed' && missedCount > 0 && (
+      {!readOnly && filter === 'missed' && missedCount > 0 && (
         <button
           type="button"
           className="btn btn-sm mt"
@@ -182,31 +188,33 @@ export default function Reminders() {
               {isOverdue(r) && <strong style={{ color: 'var(--danger)' }}> · overdue</strong>}
             </div>
             {r.notes && <div className="rem-meta text-sm">{r.notes}</div>}
-            <div className="rem-actions">
-              {r.habit && (
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  disabled={r.lastCheckinDate === todayKey}
-                  onClick={() => act(client.post(`/reminders/${r.id}/checkin`))}
-                >
-                  {r.lastCheckinDate === todayKey ? `✅ ${t('habits.checkedIn')}` : `🔥 ${t('habits.checkin')}`}
-                </button>
-              )}
-              {!r.completed && (
-                <button type="button" className="btn btn-sm" onClick={() => act(client.post(`/reminders/${r.id}/complete`))}>{t('common.done')}</button>
-              )}
-              {r.missed && !r.completed ? (
-                <button type="button" className="btn btn-sm" onClick={() => act(client.post(`/reminders/${r.id}/snooze`, { minutes: 60 }))}>{t('reminders.reschedule')}</button>
-              ) : (
-                <>
-                  <button type="button" className="btn btn-sm" onClick={() => act(client.post(`/reminders/${r.id}/snooze`, { minutes: 10 }))}>+10m</button>
-                  <button type="button" className="btn btn-sm" onClick={() => act(client.post(`/reminders/${r.id}/snooze`, { minutes: 60 }))}>+1h</button>
-                </>
-              )}
-              <button type="button" className="btn btn-sm" onClick={() => setEditing(r)}>{t('common.edit')}</button>
-              <button type="button" className="btn btn-sm btn-danger" onClick={() => act(client.delete(`/reminders/${r.id}`))}>{t('common.delete')}</button>
-            </div>
+            {!readOnly && (
+              <div className="rem-actions">
+                {r.habit && (
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    disabled={r.lastCheckinDate === todayKey}
+                    onClick={() => act(client.post(`/reminders/${r.id}/checkin`))}
+                  >
+                    {r.lastCheckinDate === todayKey ? `✅ ${t('habits.checkedIn')}` : `🔥 ${t('habits.checkin')}`}
+                  </button>
+                )}
+                {!r.completed && (
+                  <button type="button" className="btn btn-sm" onClick={() => act(client.post(`/reminders/${r.id}/complete`))}>{t('common.done')}</button>
+                )}
+                {r.missed && !r.completed ? (
+                  <button type="button" className="btn btn-sm" onClick={() => act(client.post(`/reminders/${r.id}/snooze`, { minutes: 60 }))}>{t('reminders.reschedule')}</button>
+                ) : (
+                  <>
+                    <button type="button" className="btn btn-sm" onClick={() => act(client.post(`/reminders/${r.id}/snooze`, { minutes: 10 }))}>+10m</button>
+                    <button type="button" className="btn btn-sm" onClick={() => act(client.post(`/reminders/${r.id}/snooze`, { minutes: 60 }))}>+1h</button>
+                  </>
+                )}
+                <button type="button" className="btn btn-sm" onClick={() => setEditing(r)}>{t('common.edit')}</button>
+                <button type="button" className="btn btn-sm btn-danger" onClick={() => act(client.delete(`/reminders/${r.id}`))}>{t('common.delete')}</button>
+              </div>
+            )}
           </div>
         );
       })}

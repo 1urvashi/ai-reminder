@@ -28,8 +28,14 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, default: '', trim: true },
     channels: { type: channelsSchema, default: () => ({}) },
     // Every user is their own "admin" by default (personal use). An admin can
-    // create staff accounts to assign reminders/tasks to and track their work.
-    role: { type: String, enum: ['admin', 'staff'], default: 'admin' },
+    // create team-member accounts (manager/employee/viewer) to assign
+    // reminders/tasks to and track their work:
+    //   admin   — full access, including creating/managing the team roster
+    //   manager — same reminder/Kanban access as admin (assign to anyone,
+    //             see everyone's board), but cannot manage the team roster
+    //   employee — sees/acts on only their own + assigned-to-them reminders
+    //   viewer  — same visibility as manager, but strictly read-only
+    role: { type: String, enum: ['admin', 'manager', 'employee', 'viewer'], default: 'admin' },
     department: { type: String, default: '', trim: true },
     active: { type: Boolean, default: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
