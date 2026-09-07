@@ -22,6 +22,9 @@ function getTransporter() {
     auth: process.env.SMTP_USER
       ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
       : undefined,
+    // Some hosts (e.g. Render) resolve smtp.gmail.com to an IPv6 address but
+    // have no working IPv6 route out, failing with ENETUNREACH. Force IPv4.
+    family: 4,
   });
   return transporter;
 }
