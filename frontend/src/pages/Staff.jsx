@@ -5,6 +5,7 @@ import PasswordInput from '../components/PasswordInput';
 
 const DEPARTMENTS = ['Sales', 'Marketing', 'Operations', 'Finance', 'Support', 'IT', 'HR', 'Other'];
 const EMPTY_FORM = { name: '', email: '', password: '', phone: '', department: '', departmentOther: '', role: 'employee' };
+const PAGE_SIZE = 10;
 
 function resolveDepartment(form) {
   return form.department === 'Other' ? form.departmentOther.trim() : form.department;
@@ -31,6 +32,7 @@ export default function Staff() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [editFieldError, setEditFieldError] = useState(null);
+  const [page, setPage] = useState(1);
 
   function load() {
     client
@@ -38,6 +40,13 @@ export default function Staff() {
       .then((res) => setStaff(res.data.staff))
       .catch(() => setError('Could not load staff'));
   }
+
+  const totalPages = Math.max(1, Math.ceil(staff.length / PAGE_SIZE));
+  const pagedStaff = staff.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
 
   useEffect(() => {
     load();
@@ -192,91 +201,125 @@ export default function Staff() {
         </form>
       </div>
 
-      {staff.map((s) => (
-        <div key={s.id} className={`rem-item ${!s.active ? 'done' : ''}`}>
-          {editingId === s.id ? (
-            <>
-              <div className="row" style={{ gap: '0.75rem' }}>
-                <div className="field" style={{ flex: 1, minWidth: 140 }}>
-                  <label>{t('staff.name')}</label>
-                  <input className="input" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-                </div>
-                <div className="field" style={{ flex: 1, minWidth: 140 }}>
-                  <label>{t('staff.phone')}</label>
-                  <input
-                    className={`input${editFieldError?.field === 'phone' ? ' has-error' : ''}`}
-                    value={editForm.phone}
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                    placeholder="+919876543210"
-                  />
-                  {editFieldError?.field === 'phone' && <small className="field-error">{editFieldError.message}</small>}
-                </div>
-              </div>
-              <div className="row" style={{ gap: '0.75rem' }}>
-                <div className="field" style={{ flex: 1, minWidth: 140 }}>
-                  <label>{t('staff.department')}</label>
-                  <select
-                    className="select"
-                    value={editForm.department}
-                    onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
-                  >
-                    <option value="">{t('staff.departmentNone')}</option>
-                    {DEPARTMENTS.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                  {editForm.department === 'Other' && (
-                    <input
-                      className="input"
-                      style={{ marginTop: '0.4rem' }}
-                      placeholder={t('staff.departmentOther')}
-                      value={editForm.departmentOther}
-                      onChange={(e) => setEditForm({ ...editForm, departmentOther: e.target.value })}
-                    />
-                  )}
-                </div>
-                <div className="field" style={{ flex: 1, minWidth: 140 }}>
-                  <label>{t('staff.role')}</label>
-                  <select className="select" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
-                    <option value="manager">{t('staff.roleManager')}</option>
-                    <option value="employee">{t('staff.roleEmployee')}</option>
-                    <option value="viewer">{t('staff.roleViewer')}</option>
-                  </select>
-                </div>
-              </div>
-              {editFieldError?.field === 'general' && <div className="alert alert-error">{editFieldError.message}</div>}
-              <div className="rem-actions">
-                <button type="button" className="btn btn-sm btn-primary" onClick={() => saveEdit(s)}>{t('common.saveChanges')}</button>
-                <button type="button" className="btn btn-sm" onClick={() => setEditingId(null)}>{t('common.cancel')}</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="spread">
-                <span className="rem-title">{s.name}</span>
-                <span className="row" style={{ gap: '0.3rem' }}>
-                  <span className="badge badge-normal">{t(`staff.role${s.role.charAt(0).toUpperCase()}${s.role.slice(1)}`)}</span>
-                  <span className={`badge ${s.active ? 'badge-low' : 'badge-normal'}`}>
-                    {s.active ? t('staff.active') : t('staff.inactive')}
-                  </span>
-                </span>
-              </div>
-              <div className="rem-meta">
-                {s.email}
-                {s.department && ` · ${s.department}`}
-                {s.phone && ` · ${s.phone}`}
-              </div>
-              <div className="rem-actions">
-                <button type="button" className="btn btn-sm" onClick={() => startEdit(s)}>{t('common.edit')}</button>
-                <button type="button" className="btn btn-sm" onClick={() => toggleActive(s)}>
-                  {s.active ? t('staff.deactivate') : t('staff.activate')}
-                </button>
-                <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(s)}>{t('common.delete')}</button>
-              </div>
-            </>
+      {staff.length > 0 && (
+        <div className="card">
+          <div className="data-table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{t('staff.name')}</th>
+                  <th>{t('staff.email')}</th>
+                  <th>{t('staff.role')}</th>
+                  <th>{t('staff.department')}</th>
+                  <th>{t('staff.phone')}</th>
+                  <th>{t('staff.active')}</th>
+                  <th>{t('common.edit')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedStaff.map((s) =>
+                  editingId === s.id ? (
+                    <tr key={s.id}>
+                      <td colSpan={7}>
+                        <div className="row" style={{ gap: '0.75rem' }}>
+                          <div className="field" style={{ flex: 1, minWidth: 140 }}>
+                            <label>{t('staff.name')}</label>
+                            <input className="input" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                          </div>
+                          <div className="field" style={{ flex: 1, minWidth: 140 }}>
+                            <label>{t('staff.phone')}</label>
+                            <input
+                              className={`input${editFieldError?.field === 'phone' ? ' has-error' : ''}`}
+                              value={editForm.phone}
+                              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                              placeholder="+919876543210"
+                            />
+                            {editFieldError?.field === 'phone' && <small className="field-error">{editFieldError.message}</small>}
+                          </div>
+                        </div>
+                        <div className="row" style={{ gap: '0.75rem' }}>
+                          <div className="field" style={{ flex: 1, minWidth: 140 }}>
+                            <label>{t('staff.department')}</label>
+                            <select
+                              className="select"
+                              value={editForm.department}
+                              onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                            >
+                              <option value="">{t('staff.departmentNone')}</option>
+                              {DEPARTMENTS.map((d) => (
+                                <option key={d} value={d}>{d}</option>
+                              ))}
+                            </select>
+                            {editForm.department === 'Other' && (
+                              <input
+                                className="input"
+                                style={{ marginTop: '0.4rem' }}
+                                placeholder={t('staff.departmentOther')}
+                                value={editForm.departmentOther}
+                                onChange={(e) => setEditForm({ ...editForm, departmentOther: e.target.value })}
+                              />
+                            )}
+                          </div>
+                          <div className="field" style={{ flex: 1, minWidth: 140 }}>
+                            <label>{t('staff.role')}</label>
+                            <select className="select" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
+                              <option value="manager">{t('staff.roleManager')}</option>
+                              <option value="employee">{t('staff.roleEmployee')}</option>
+                              <option value="viewer">{t('staff.roleViewer')}</option>
+                            </select>
+                          </div>
+                        </div>
+                        {editFieldError?.field === 'general' && <div className="alert alert-error">{editFieldError.message}</div>}
+                        <div className="rem-actions">
+                          <button type="button" className="btn btn-sm btn-primary" onClick={() => saveEdit(s)}>{t('common.saveChanges')}</button>
+                          <button type="button" className="btn btn-sm" onClick={() => setEditingId(null)}>{t('common.cancel')}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={s.id} className={!s.active ? 'inactive-row' : ''}>
+                      <td>{s.name}</td>
+                      <td>{s.email}</td>
+                      <td>
+                        <span className="badge badge-normal">
+                          {t(`staff.role${s.role.charAt(0).toUpperCase()}${s.role.slice(1)}`)}
+                        </span>
+                      </td>
+                      <td>{s.department || '—'}</td>
+                      <td>{s.phone || '—'}</td>
+                      <td>
+                        <span className={`badge ${s.active ? 'badge-low' : 'badge-normal'}`}>
+                          {s.active ? t('staff.active') : t('staff.inactive')}
+                        </span>
+                      </td>
+                      <td className="actions-cell">
+                        <div className="row" style={{ gap: '0.4rem' }}>
+                          <button type="button" className="btn btn-sm" onClick={() => startEdit(s)}>{t('common.edit')}</button>
+                          <button type="button" className="btn btn-sm" onClick={() => toggleActive(s)}>
+                            {s.active ? t('staff.deactivate') : t('staff.activate')}
+                          </button>
+                          <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(s)}>{t('common.delete')}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+          {staff.length > PAGE_SIZE && (
+            <div className="pagination">
+              <button type="button" className="btn btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                {t('common.previous')}
+              </button>
+              <span className="page-info">{page} / {totalPages}</span>
+              <button type="button" className="btn btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                {t('common.next')}
+              </button>
+            </div>
           )}
         </div>
-      ))}
+      )}
       {staff.length === 0 && <p className="muted">{t('staff.empty')}</p>}
     </div>
   );
