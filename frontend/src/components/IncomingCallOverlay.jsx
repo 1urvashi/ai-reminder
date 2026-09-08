@@ -32,9 +32,10 @@ function matchIntent(text) {
 
 // A free, in-browser "AI is calling you" experience: rings (synthesized tone,
 // no audio asset), speaks the due reminder aloud via the browser's built-in
-// Text-to-Speech, then listens for a spoken reply (Web Speech API) and takes
-// a best-effort action (snooze/complete) based on simple keyword matching.
-// Requires no third-party service and costs nothing to run.
+// Text-to-Speech, and offers BOTH a spoken reply (Web Speech API) and plain
+// tap-to-answer buttons — voice recognition can misfire, so Done/Snooze/
+// Cancel always work as a reliable manual fallback. Requires no third-party
+// service and costs nothing to run.
 export default function IncomingCallOverlay() {
   const { notifications, markRead } = useNotificationsContext();
   const { t, lang } = useI18n();
@@ -43,6 +44,7 @@ export default function IncomingCallOverlay() {
   const [queue, setQueue] = useState([]);
   const [phase, setPhase] = useState('ringing'); // ringing | speaking | listening | done
   const [heard, setHeard] = useState('');
+  const [busy, setBusy] = useState(false);
   const presentedIds = useRef(new Set());
 
   const current = queue[0] || null;
@@ -60,6 +62,7 @@ export default function IncomingCallOverlay() {
     if (current) {
       setPhase('ringing');
       setHeard('');
+      setBusy(false);
       ringtone.start();
       return () => ringtone.stop();
     }
@@ -70,19 +73,24 @@ export default function IncomingCallOverlay() {
     ringtone.stop();
     speech.stop();
     window.speechSynthesis?.cancel();
+    setBusy(false);
     setQueue((prev) => prev.slice(1));
   }
 
+  // intent: 'done' | 'snooze' | 'ack' | 'cancel'. 'cancel' dismisses without
+  // touching the reminder at all (escalation, if enabled, keeps nagging —
+  // this is a deliberate "I'm not dealing with this right now", not a reply).
   async function finishCall(notification, intent) {
+    setBusy(true);
     try {
       if (intent === 'snooze' && notification.reminderId) {
         await client.post(`/reminders/${notification.reminderId}/snooze`, { minutes: 10 });
       } else if (intent === 'done' && notification.reminderId) {
         await client.post(`/reminders/${notification.reminderId}/complete`);
-      } else if (notification.reminderId) {
-        // Ambiguous reply — don't falsely mark the task done, but a spoken
-        // answer of any kind should still stop escalation from calling
-        // back about this same occurrence.
+      } else if (intent === 'ack' && notification.reminderId) {
+        // Ambiguous spoken reply — don't falsely mark the task done, but a
+        // spoken answer of any kind should still stop escalation from
+        // calling back about this same occurrence.
         await client.post(`/reminders/${notification.reminderId}/acknowledge`);
       }
     } catch {
@@ -97,7 +105,23 @@ export default function IncomingCallOverlay() {
     advanceQueue();
   }
 
-  function handleAnswer() {
+  function handleManualDone() {
+    finishCall(current, 'done');
+  }
+
+  function handleManualSnooze() {
+    finishCall(current, 'snooze');
+  }
+
+  function handleManualCancel() {
+    if (!current) return;
+    ringtone.stop();
+    window.speechSynthesis?.cancel();
+    markRead(current.id).catch(() => {});
+    advanceQueue();
+  }
+
+  function handleAnswerByVoice() {
     ringtone.stop();
     setPhase('speaking');
     const speechLang = SPEECH_LANG[lang] || 'en-IN';
@@ -112,14 +136,6 @@ export default function IncomingCallOverlay() {
     });
   }
 
-  function handleDecline() {
-    if (!current) return;
-    ringtone.stop();
-    window.speechSynthesis?.cancel();
-    markRead(current.id);
-    advanceQueue();
-  }
-
   if (!current) return null;
 
   return (
@@ -129,18 +145,38 @@ export default function IncomingCallOverlay() {
         <h2 style={{ margin: '0.5rem 0 0.2rem' }}>{current.title}</h2>
         <p className="muted text-sm">{current.message}</p>
 
-        {phase === 'ringing' && (
-          <div className="row" style={{ justifyContent: 'center', marginTop: '1.2rem' }}>
-            <button type="button" className="btn btn-danger" onClick={handleDecline}>{t('call.decline')}</button>
-            <button type="button" className="btn btn-primary" onClick={handleAnswer}>{t('call.answer')}</button>
+        {(phase === 'ringing' || phase === 'speaking') && (
+          <div className="call-manual-actions">
+            <button type="button" className="btn btn-primary btn-block" onClick={handleManualDone} disabled={busy}>
+              {t('call.markDone')}
+            </button>
+            <div className="row" style={{ gap: '0.5rem' }}>
+              <button type="button" className="btn" style={{ flex: 1 }} onClick={handleManualSnooze} disabled={busy}>
+                {t('call.snooze10')}
+              </button>
+              <button type="button" className="btn btn-danger" style={{ flex: 1 }} onClick={handleManualCancel} disabled={busy}>
+                {t('call.cancel')}
+              </button>
+            </div>
+            {phase === 'ringing' && speech.supported && (
+              <button type="button" className="btn btn-ghost btn-block" onClick={handleAnswerByVoice} disabled={busy}>
+                🎙️ {t('call.answerByVoice')}
+              </button>
+            )}
           </div>
         )}
         {phase === 'speaking' && <p className="alert alert-info">{t('call.speaking')}</p>}
         {phase === 'listening' && (
-          <p className="alert alert-info">
-            🎙️ {t('call.listening')}
-            {speech.interim && <> — “{speech.interim}”</>}
-          </p>
+          <>
+            <p className="alert alert-info">
+              🎙️ {t('call.listening')}
+              {speech.interim && <> — “{speech.interim}”</>}
+            </p>
+            <div className="row" style={{ gap: '0.5rem' }}>
+              <button type="button" className="btn" style={{ flex: 1 }} onClick={handleManualSnooze}>{t('call.snooze10')}</button>
+              <button type="button" className="btn btn-danger" style={{ flex: 1 }} onClick={handleManualCancel}>{t('call.cancel')}</button>
+            </div>
+          </>
         )}
         {phase === 'done' && (
           <p className="alert alert-ok">

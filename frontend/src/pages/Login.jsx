@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Brand from '../components/Brand';
 import GoogleSignInButton from '../components/GoogleSignInButton';
+import PasswordInput from '../components/PasswordInput';
 
 export default function Login() {
   const { login, googleLogin } = useAuth();
@@ -50,7 +51,7 @@ export default function Login() {
             </div>
             <div className="field">
               <label>Password</label>
-              <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
             </div>
             {error && <div className="alert alert-error">{error}</div>}
             <button type="submit" className="btn btn-primary btn-block" disabled={busy}>

@@ -442,6 +442,18 @@ a:hover {
 .alert-ok { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
 .alert-info { background: var(--primary-soft); color: var(--primary); }
 
+/* Inline, field-level validation error — sits right under the input it
+   applies to instead of a generic banner at the top/bottom of the form. */
+.field-error {
+  display: block;
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+.input.has-error {
+  border-color: var(--danger);
+}
+
 /* ---------- Auth ---------- */
 .auth-wrap {
   min-height: 100vh;
@@ -661,6 +673,12 @@ a:hover {
 }
 .call-avatar.pulse {
   animation: call-pulse 1.4s infinite;
+}
+.call-manual-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
 }
 @keyframes call-pulse {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent); }

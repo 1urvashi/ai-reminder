@@ -142,15 +142,10 @@ async function awardCompletionPoints(userId, reminder) {
   });
   const actor = await User.findById(userId);
   if (!actor) return;
-  const { newBadges } = await awardTaskCompletion(actor, { priority: reminder.priority, totalCompleted });
-  for (const badge of newBadges) {
-    await Notification.create({
-      user: userId,
-      title: `🏆 Badge earned: ${badge.label}`,
-      message: `You earned the "${badge.label}" badge. Keep going!`,
-      dueAt: new Date(),
-    });
-  }
+  // Points/badges are still awarded and shown on the Dashboard — they just
+  // don't create a Notification, which used to also surface as an "AI is
+  // calling" popup for something that isn't a due reminder.
+  await awardTaskCompletion(actor, { priority: reminder.priority, totalCompleted });
 }
 
 export async function listReminders(req, res) {
@@ -346,19 +341,14 @@ export async function checkinHabit(req, res) {
   reminder.lastCheckinDate = todayKey;
   await reminder.save();
 
+  // No Notification here either, for the same reason as awardCompletionPoints
+  // above — badges/points still land on the Dashboard, just without also
+  // triggering an "AI is calling" popup.
   let newBadges = [];
   const actor = await User.findById(req.userId);
   if (actor) {
     const result = await awardHabitStreak(actor, reminder.streak);
     newBadges = result.newBadges;
-    for (const badge of newBadges) {
-      await Notification.create({
-        user: req.userId,
-        title: `🏆 Badge earned: ${badge.label}`,
-        message: `You earned the "${badge.label}" badge. Keep going!`,
-        dueAt: now,
-      });
-    }
   }
 
   res.json({ reminder: serialize(reminder), newBadges });

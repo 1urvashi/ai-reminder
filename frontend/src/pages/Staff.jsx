@@ -1,12 +1,36 @@
 import { useEffect, useState } from 'react';
 import client from '../api/client';
 import { useI18n } from '../i18n/I18nContext';
+import PasswordInput from '../components/PasswordInput';
+
+const DEPARTMENTS = ['Sales', 'Marketing', 'Operations', 'Finance', 'Support', 'IT', 'HR', 'Other'];
+const EMPTY_FORM = { name: '', email: '', password: '', phone: '', department: '', departmentOther: '', role: 'employee' };
+
+function resolveDepartment(form) {
+  return form.department === 'Other' ? form.departmentOther.trim() : form.department;
+}
+
+// Splits a server error like "phone must be E.164 format, e.g. ..." into
+// which field it belongs to, so it can render right under that input
+// instead of a generic banner at the top of the form.
+function fieldFromError(message) {
+  if (!message) return null;
+  if (message.toLowerCase().includes('phone')) return 'phone';
+  if (message.toLowerCase().includes('email')) return 'email';
+  if (message.toLowerCase().includes('password')) return 'password';
+  if (message.toLowerCase().includes('role')) return 'role';
+  return null;
+}
 
 export default function Staff() {
   const { t } = useI18n();
   const [staff, setStaff] = useState([]);
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', department: '', role: 'employee' });
+  const [form, setForm] = useState({ ...EMPTY_FORM });
   const [error, setError] = useState('');
+  const [fieldError, setFieldError] = useState(null); // { field, message }
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [editFieldError, setEditFieldError] = useState(null);
 
   function load() {
     client
@@ -22,12 +46,19 @@ export default function Staff() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    setFieldError(null);
     try {
-      await client.post('/staff', form);
-      setForm({ name: '', email: '', password: '', phone: '', department: '', role: 'employee' });
+      await client.post('/staff', { ...form, department: resolveDepartment(form) });
+      setForm({ ...EMPTY_FORM });
       load();
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not add staff member');
+      const message = err.response?.data?.message || 'Could not add staff member';
+      const field = fieldFromError(message);
+      if (field) {
+        setFieldError({ field, message });
+      } else {
+        setError(message);
+      }
     }
   }
 
@@ -39,6 +70,37 @@ export default function Staff() {
   async function remove(member) {
     await client.delete(`/staff/${member.id}`);
     load();
+  }
+
+  function startEdit(member) {
+    setEditingId(member.id);
+    setEditFieldError(null);
+    const isPreset = DEPARTMENTS.includes(member.department);
+    setEditForm({
+      name: member.name,
+      phone: member.phone || '',
+      department: member.department && !isPreset ? 'Other' : member.department || '',
+      departmentOther: member.department && !isPreset ? member.department : '',
+      role: member.role,
+    });
+  }
+
+  async function saveEdit(member) {
+    setEditFieldError(null);
+    try {
+      await client.put(`/staff/${member.id}`, {
+        name: editForm.name,
+        phone: editForm.phone,
+        department: resolveDepartment(editForm),
+        role: editForm.role,
+      });
+      setEditingId(null);
+      load();
+    } catch (err) {
+      const message = err.response?.data?.message || 'Could not save changes';
+      const field = fieldFromError(message);
+      setEditFieldError({ field: field || 'general', message });
+    }
   }
 
   return (
@@ -58,58 +120,161 @@ export default function Staff() {
             </div>
             <div className="field" style={{ flex: 1, minWidth: 160 }}>
               <label>{t('staff.email')}</label>
-              <input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+              <input
+                className={`input${fieldError?.field === 'email' ? ' has-error' : ''}`}
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                required
+              />
+              {fieldError?.field === 'email' && <small className="field-error">{fieldError.message}</small>}
             </div>
           </div>
           <div className="row" style={{ gap: '0.75rem' }}>
             <div className="field" style={{ flex: 1, minWidth: 160 }}>
               <label>{t('staff.password')}</label>
-              <input className="input" type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+              <PasswordInput
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                minLength={8}
+                required
+                autoComplete="new-password"
+              />
+              {fieldError?.field === 'password' && <small className="field-error">{fieldError.message}</small>}
             </div>
             <div className="field" style={{ flex: 1, minWidth: 160 }}>
               <label>{t('staff.phone')}</label>
-              <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+919876543210" />
+              <input
+                className={`input${fieldError?.field === 'phone' ? ' has-error' : ''}`}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="+919876543210"
+              />
+              {fieldError?.field === 'phone' && <small className="field-error">{fieldError.message}</small>}
             </div>
+          </div>
+          <div className="row" style={{ gap: '0.75rem' }}>
             <div className="field" style={{ flex: 1, minWidth: 160 }}>
               <label>{t('staff.department')}</label>
-              <input className="input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+              <select
+                className="select"
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })}
+              >
+                <option value="">{t('staff.departmentNone')}</option>
+                {DEPARTMENTS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              {form.department === 'Other' && (
+                <input
+                  className="input"
+                  style={{ marginTop: '0.4rem' }}
+                  placeholder={t('staff.departmentOther')}
+                  value={form.departmentOther}
+                  onChange={(e) => setForm({ ...form, departmentOther: e.target.value })}
+                />
+              )}
+            </div>
+            <div className="field" style={{ flex: 1, minWidth: 160 }}>
+              <label>{t('staff.role')}</label>
+              <select className="select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                <option value="manager">{t('staff.roleManager')}</option>
+                <option value="employee">{t('staff.roleEmployee')}</option>
+                <option value="viewer">{t('staff.roleViewer')}</option>
+              </select>
             </div>
           </div>
-          <div className="field" style={{ maxWidth: 220 }}>
-            <label>{t('staff.role')}</label>
-            <select className="select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option value="manager">{t('staff.roleManager')}</option>
-              <option value="employee">{t('staff.roleEmployee')}</option>
-              <option value="viewer">{t('staff.roleViewer')}</option>
-            </select>
-            <small className="muted">{t('staff.roleHint')}</small>
+          <small className="muted">{t('staff.roleHint')}</small>
+          <div className="mt">
+            <button type="submit" className="btn btn-primary">{t('staff.add')}</button>
           </div>
-          <button type="submit" className="btn btn-primary">{t('staff.add')}</button>
         </form>
       </div>
 
       {staff.map((s) => (
         <div key={s.id} className={`rem-item ${!s.active ? 'done' : ''}`}>
-          <div className="spread">
-            <span className="rem-title">{s.name}</span>
-            <span className="row" style={{ gap: '0.3rem' }}>
-              <span className="badge badge-normal">{t(`staff.role${s.role.charAt(0).toUpperCase()}${s.role.slice(1)}`)}</span>
-              <span className={`badge ${s.active ? 'badge-low' : 'badge-normal'}`}>
-                {s.active ? t('staff.active') : t('staff.inactive')}
-              </span>
-            </span>
-          </div>
-          <div className="rem-meta">
-            {s.email}
-            {s.department && ` · ${s.department}`}
-            {s.phone && ` · ${s.phone}`}
-          </div>
-          <div className="rem-actions">
-            <button type="button" className="btn btn-sm" onClick={() => toggleActive(s)}>
-              {s.active ? t('staff.deactivate') : t('staff.activate')}
-            </button>
-            <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(s)}>{t('common.delete')}</button>
-          </div>
+          {editingId === s.id ? (
+            <>
+              <div className="row" style={{ gap: '0.75rem' }}>
+                <div className="field" style={{ flex: 1, minWidth: 140 }}>
+                  <label>{t('staff.name')}</label>
+                  <input className="input" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                </div>
+                <div className="field" style={{ flex: 1, minWidth: 140 }}>
+                  <label>{t('staff.phone')}</label>
+                  <input
+                    className={`input${editFieldError?.field === 'phone' ? ' has-error' : ''}`}
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    placeholder="+919876543210"
+                  />
+                  {editFieldError?.field === 'phone' && <small className="field-error">{editFieldError.message}</small>}
+                </div>
+              </div>
+              <div className="row" style={{ gap: '0.75rem' }}>
+                <div className="field" style={{ flex: 1, minWidth: 140 }}>
+                  <label>{t('staff.department')}</label>
+                  <select
+                    className="select"
+                    value={editForm.department}
+                    onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                  >
+                    <option value="">{t('staff.departmentNone')}</option>
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  {editForm.department === 'Other' && (
+                    <input
+                      className="input"
+                      style={{ marginTop: '0.4rem' }}
+                      placeholder={t('staff.departmentOther')}
+                      value={editForm.departmentOther}
+                      onChange={(e) => setEditForm({ ...editForm, departmentOther: e.target.value })}
+                    />
+                  )}
+                </div>
+                <div className="field" style={{ flex: 1, minWidth: 140 }}>
+                  <label>{t('staff.role')}</label>
+                  <select className="select" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
+                    <option value="manager">{t('staff.roleManager')}</option>
+                    <option value="employee">{t('staff.roleEmployee')}</option>
+                    <option value="viewer">{t('staff.roleViewer')}</option>
+                  </select>
+                </div>
+              </div>
+              {editFieldError?.field === 'general' && <div className="alert alert-error">{editFieldError.message}</div>}
+              <div className="rem-actions">
+                <button type="button" className="btn btn-sm btn-primary" onClick={() => saveEdit(s)}>{t('common.saveChanges')}</button>
+                <button type="button" className="btn btn-sm" onClick={() => setEditingId(null)}>{t('common.cancel')}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="spread">
+                <span className="rem-title">{s.name}</span>
+                <span className="row" style={{ gap: '0.3rem' }}>
+                  <span className="badge badge-normal">{t(`staff.role${s.role.charAt(0).toUpperCase()}${s.role.slice(1)}`)}</span>
+                  <span className={`badge ${s.active ? 'badge-low' : 'badge-normal'}`}>
+                    {s.active ? t('staff.active') : t('staff.inactive')}
+                  </span>
+                </span>
+              </div>
+              <div className="rem-meta">
+                {s.email}
+                {s.department && ` · ${s.department}`}
+                {s.phone && ` · ${s.phone}`}
+              </div>
+              <div className="rem-actions">
+                <button type="button" className="btn btn-sm" onClick={() => startEdit(s)}>{t('common.edit')}</button>
+                <button type="button" className="btn btn-sm" onClick={() => toggleActive(s)}>
+                  {s.active ? t('staff.deactivate') : t('staff.activate')}
+                </button>
+                <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(s)}>{t('common.delete')}</button>
+              </div>
+            </>
+          )}
         </div>
       ))}
       {staff.length === 0 && <p className="muted">{t('staff.empty')}</p>}

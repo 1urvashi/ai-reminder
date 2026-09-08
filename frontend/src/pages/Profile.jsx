@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import client from '../api/client';
 import { isPushSupported, getPushSubscription, subscribeToPush, unsubscribeFromPush } from '../utils/push';
+import PasswordInput from '../components/PasswordInput';
 
 const STATUS_STYLE = {
   sent: { label: '✅ Sent', cls: 'alert-ok' },
@@ -42,6 +43,8 @@ export default function Profile() {
   const [caregiverName, setCaregiverName] = useState(user?.caregiver?.name || '');
   const [caregiverPhone, setCaregiverPhone] = useState(user?.caregiver?.phone || '');
   const [status, setStatus] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [caregiverPhoneError, setCaregiverPhoneError] = useState('');
 
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
@@ -82,6 +85,8 @@ export default function Profile() {
   async function handleSubmit(e) {
     e.preventDefault();
     setStatus('');
+    setPhoneError('');
+    setCaregiverPhoneError('');
     try {
       await updateProfile({
         name,
@@ -92,7 +97,14 @@ export default function Profile() {
       });
       setStatus('ok:Saved');
     } catch (err) {
-      setStatus('err:' + (err.response?.data?.message || 'Failed to save'));
+      const message = err.response?.data?.message || 'Failed to save';
+      if (message.toLowerCase().startsWith('caregiver.phone')) {
+        setCaregiverPhoneError(message);
+      } else if (message.toLowerCase().includes('phone')) {
+        setPhoneError(message);
+      } else {
+        setStatus('err:' + message);
+      }
     }
   }
 
@@ -130,7 +142,13 @@ export default function Profile() {
           </div>
           <div className="field">
             <label>Phone (E.164, e.g. +919876543210)</label>
-            <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+919876543210" />
+            <input
+              className={`input${phoneError ? ' has-error' : ''}`}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+919876543210"
+            />
+            {phoneError && <small className="field-error">{phoneError}</small>}
           </div>
           <div className="field">
             <label>Reminder channels</label>
@@ -153,11 +171,12 @@ export default function Profile() {
               onChange={(e) => setCaregiverName(e.target.value)}
             />
             <input
-              className="input"
+              className={`input${caregiverPhoneError ? ' has-error' : ''}`}
               placeholder={t('profile.caregiverPhone')}
               value={caregiverPhone}
               onChange={(e) => setCaregiverPhone(e.target.value)}
             />
+            {caregiverPhoneError && <small className="field-error">{caregiverPhoneError}</small>}
           </div>
           {banner(status)}
           <button type="submit" className="btn btn-primary">Save</button>
@@ -220,11 +239,11 @@ export default function Profile() {
         <form onSubmit={handlePasswordChange}>
           <div className="field">
             <label>Current password</label>
-            <input className="input" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+            <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required autoComplete="current-password" />
           </div>
           <div className="field">
             <label>New password (min 8 chars)</label>
-            <input className="input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+            <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required autoComplete="new-password" />
           </div>
           {banner(pwStatus)}
           <button type="submit" className="btn">Change password</button>

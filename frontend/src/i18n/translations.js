@@ -39,6 +39,8 @@ export const translations = {
     'staff.roleManager': 'Manager',
     'staff.roleEmployee': 'Employee',
     'staff.roleViewer': 'Viewer',
+    'staff.departmentNone': 'No department',
+    'staff.departmentOther': 'Enter department name',
     'reminders.readOnly': 'Your role has read-only access — you can view reminders but not create, edit, or complete them.',
     'kanban.readOnly': 'Your role has read-only access — you can view the board but not move cards.',
 
@@ -144,6 +146,10 @@ export const translations = {
 
     'call.answer': 'Answer',
     'call.decline': 'Decline',
+    'call.markDone': '✅ Mark as done',
+    'call.snooze10': '⏰ Snooze 10 min',
+    'call.cancel': '❌ Cancel',
+    'call.answerByVoice': 'Answer by voice instead',
     'call.speaking': 'AI is speaking your reminder…',
     'call.listening': 'Listening — say something like "done" or "remind me later"',
     'call.heardYouSay': 'Got it, you said:',
@@ -184,6 +190,8 @@ export const translations = {
     'staff.roleManager': 'मैनेजर',
     'staff.roleEmployee': 'एम्प्लॉई',
     'staff.roleViewer': 'व्यूअर',
+    'staff.departmentNone': 'कोई विभाग नहीं',
+    'staff.departmentOther': 'विभाग का नाम लिखें',
     'reminders.readOnly': 'आपकी भूमिका सिर्फ देखने की अनुमति देती है — आप रिमाइंडर देख सकते हैं पर बना/बदल/पूरा नहीं कर सकते।',
     'kanban.readOnly': 'आपकी भूमिका सिर्फ देखने की अनुमति देती है — बोर्ड देख सकते हैं पर कार्ड हिला नहीं सकते।',
 
@@ -289,6 +297,10 @@ export const translations = {
 
     'call.answer': 'जवाब दें',
     'call.decline': 'काटें',
+    'call.markDone': '✅ पूरा हुआ मार्क करें',
+    'call.snooze10': '⏰ 10 मिनट बाद याद दिलाएं',
+    'call.cancel': '❌ रद्द करें',
+    'call.answerByVoice': 'इसके बजाय आवाज़ से जवाब दें',
     'call.speaking': 'AI आपका रिमाइंडर बोल रहा है…',
     'call.listening': 'सुन रहा हूं — कहें "हो गया" या "बाद में याद दिलाना"',
     'call.heardYouSay': 'समझ गया, आपने कहा:',
@@ -329,6 +341,8 @@ export const translations = {
     'staff.roleManager': 'મેનેજર',
     'staff.roleEmployee': 'એમ્પ્લોયી',
     'staff.roleViewer': 'વ્યૂઅર',
+    'staff.departmentNone': 'કોઈ ડિપાર્ટમેન્ટ નથી',
+    'staff.departmentOther': 'ડિપાર્ટમેન્ટનું નામ લખો',
     'reminders.readOnly': 'તમારી ભૂમિકા ફક્ત જોવાની પરવાનગી આપે છે — તમે રિમાઇન્ડર જોઈ શકો પણ બનાવી/બદલી/પૂરા ના કરી શકો.',
     'kanban.readOnly': 'તમારી ભૂમિકા ફક્ત જોવાની પરવાનગી આપે છે — બોર્ડ જોઈ શકો પણ કાર્ડ ખસેડી ના શકો.',
 
@@ -434,6 +448,10 @@ export const translations = {
 
     'call.answer': 'જવાબ આપો',
     'call.decline': 'કાપો',
+    'call.markDone': '✅ પૂરું થયું માર્ક કરો',
+    'call.snooze10': '⏰ 10 મિનિટ પછી યાદ અપાવો',
+    'call.cancel': '❌ રદ કરો',
+    'call.answerByVoice': 'તેના બદલે અવાજથી જવાબ આપો',
     'call.speaking': 'AI તમારું રિમાઇન્ડર બોલી રહ્યું છે…',
     'call.listening': 'સાંભળી રહ્યું છે — "થઈ ગયું" અથવા "પછી યાદ કરાવજો" કહો',
     'call.heardYouSay': 'સમજાયું, તમે કહ્યું:',

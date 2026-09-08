@@ -2,6 +2,15 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 
 const TEAM_ROLES = ['manager', 'employee', 'viewer'];
+const E164_PATTERN = /^\+[1-9]\d{6,14}$/;
+
+function validatePhone(phone) {
+  const trimmed = String(phone || '').trim();
+  if (trimmed !== '' && !E164_PATTERN.test(trimmed)) {
+    return { error: 'phone must be E.164 format, e.g. +919876543210' };
+  }
+  return { value: trimmed };
+}
 
 function publicStaff(user) {
   return {
@@ -39,6 +48,10 @@ export async function createStaff(req, res) {
   if (!TEAM_ROLES.includes(teamRole)) {
     return res.status(400).json({ message: `role must be one of: ${TEAM_ROLES.join(', ')}` });
   }
+  const phoneResult = validatePhone(phone);
+  if (phoneResult.error) {
+    return res.status(400).json({ message: phoneResult.error });
+  }
 
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) {
@@ -51,7 +64,7 @@ export async function createStaff(req, res) {
     email,
     passwordHash,
     role: teamRole,
-    phone: phone || '',
+    phone: phoneResult.value,
     department: department || '',
     createdBy: req.userId,
   });
@@ -61,10 +74,17 @@ export async function createStaff(req, res) {
 
 export async function updateStaff(req, res) {
   const update = {};
-  for (const key of ['name', 'phone', 'department', 'active']) {
+  for (const key of ['name', 'department', 'active']) {
     if (req.body[key] !== undefined) {
       update[key] = req.body[key];
     }
+  }
+  if (req.body.phone !== undefined) {
+    const phoneResult = validatePhone(req.body.phone);
+    if (phoneResult.error) {
+      return res.status(400).json({ message: phoneResult.error });
+    }
+    update.phone = phoneResult.value;
   }
   if (req.body.role !== undefined) {
     if (!TEAM_ROLES.includes(req.body.role)) {
