@@ -16,7 +16,10 @@ const PENDING_WORDS = ['pending', 'baki', 'बाकी', 'બાકી', 'due',
 const STAFF_WORDS = ['staff', 'team', 'employee', 'kone', 'કોણે', 'कौन'];
 const WEEK_WORDS = ['week', 'adhavadiye', 'अठवाड़िये', 'અઠવાડિયે', 'हफ्ते'];
 const STATS_WORDS = ['points', 'streak', 'badge', 'score'];
-const QUESTION_MARKERS = ['kya', 'su', 'शु', 'क्या', 'शुं', 'शू', 'केटला', 'कितने'];
+const QUESTION_MARKERS = [
+  'kya', 'su', 'शु', 'क्या', 'शुं', 'शू', 'केटला', 'कितने',
+  'ketla', 'ketli', 'ketlu', 'kitla', 'kitli', 'kitna', 'kitne', 'kitni', 'kai', 'shu', 'kem',
+];
 
 export function detectQuestionType(rawText) {
   const text = rawText.toLowerCase();
