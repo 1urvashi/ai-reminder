@@ -35,6 +35,12 @@ async function postForm(resource, params) {
 
 // Send a WhatsApp message. `to` must be a bare E.164 number; the whatsapp:
 // prefix is added here and taken from TWILIO_WHATSAPP_FROM for the sender.
+//
+// WhatsApp only allows free-form Body text within 24h of the recipient's last
+// message to us (a "session"). A reminder can fire at any time, often outside
+// that window, so this falls back to an approved Content Template (identified
+// by TWILIO_WHATSAPP_CONTENT_SID) whenever one is configured, passing the
+// whole message as the template's single {{1}} variable.
 export async function sendWhatsApp(to, body) {
   if (typeof to !== 'string' || to.trim() === '') {
     throw new TypeError('sendWhatsApp requires a destination number');
@@ -43,11 +49,18 @@ export async function sendWhatsApp(to, body) {
   if (!from) {
     throw new Error('TWILIO_WHATSAPP_FROM is not configured');
   }
-  return postForm('Messages.json', {
+  const params = {
     From: from.startsWith('whatsapp:') ? from : `whatsapp:${from}`,
     To: `whatsapp:${to}`,
-    Body: body,
-  });
+  };
+  const contentSid = process.env.TWILIO_WHATSAPP_CONTENT_SID;
+  if (contentSid) {
+    params.ContentSid = contentSid;
+    params.ContentVariables = JSON.stringify({ 1: body });
+  } else {
+    params.Body = body;
+  }
+  return postForm('Messages.json', params);
 }
 
 // Place an outbound voice call. Twilio fetches TwiML from `voiceUrl` when the
