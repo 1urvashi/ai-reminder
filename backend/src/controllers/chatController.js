@@ -2,18 +2,24 @@ import { runChatTurn } from '../services/chatService.js';
 import { toClientError } from '../services/aiError.js';
 import { parseReminderText } from '../services/localReminderParser.js';
 import { detectQuestionType, answerBusinessQuestion } from '../services/businessQA.js';
+import { nowInZone, zonedNaiveToUtc } from '../services/timezoneUtil.js';
 import User from '../models/User.js';
 import Reminder from '../models/Reminder.js';
 
 // When the AI is unavailable (out of credits, misconfigured, rate-limited),
 // fall back to free local parsing so the reminder still gets created instead
-// of the whole chat failing.
+// of the whole chat failing. parseReminderText works in naive wall-clock
+// time, so "now" and the parsed result must both be anchored to the user's
+// timezone (not the server's) — otherwise "5pm" silently becomes 5pm
+// server-local, which then displays as some other time entirely once
+// converted to the user's zone.
 async function fallbackToLocalParsing(userId, message, timeZone, mapped) {
-  const fields = parseReminderText(message, new Date());
+  const fields = parseReminderText(message, nowInZone(timeZone));
+  const datetime = zonedNaiveToUtc(fields.datetime, timeZone);
   const reminder = await Reminder.create({
     user: userId,
     title: fields.title,
-    datetime: fields.datetime,
+    datetime,
     recurrence: fields.recurrence,
     priority: fields.priority,
   });
