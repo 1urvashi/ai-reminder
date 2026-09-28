@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { blobToMonoPCM16k } from '../utils/audioResample';
 
 const MIN_DURATION_S = 0.6;
@@ -20,7 +20,9 @@ function isTooQuietOrShort(samples) {
 // Transformers.js) — far better Gujarati/Hindi accuracy than the browser's
 // built-in Web Speech API, at the cost of a one-time model download (~74MB,
 // cached after) and a few seconds of processing per recording. The worker
-// and model load lazily, only when the user first taps the mic.
+// and model start loading as soon as this hook mounts (see the effect
+// below), so a mic tap usually finds it already warm and starts recording
+// immediately instead of showing a loading state.
 export function useWhisperTranscription() {
   const supported =
     typeof window !== 'undefined' &&
@@ -70,17 +72,35 @@ export function useWhisperTranscription() {
     return worker;
   }
 
+  // Load the model as soon as this component mounts instead of waiting for
+  // the first mic tap, so by the time someone actually taps it the model is
+  // usually already warm and recording starts instantly instead of showing
+  // a loading state.
+  useEffect(() => {
+    if (!supported) return;
+    const worker = ensureWorker();
+    setStatus((s) => {
+      if (s !== 'idle') return s;
+      setProgress(0);
+      worker.postMessage({ type: 'load' });
+      return 'loading';
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const start = useCallback(async (langCode, onFinal) => {
     if (!supported) return;
     setError('');
     onFinalRef.current = typeof onFinal === 'function' ? onFinal : null;
     langRef.current = langCode || 'en';
 
-    const worker = ensureWorker();
-    if (status === 'idle' || status === 'error') {
-      setStatus('loading');
-      setProgress(0);
-      worker.postMessage({ type: 'load' });
+    if (status !== 'ready') {
+      const worker = ensureWorker();
+      if (status === 'idle' || status === 'error') {
+        setStatus('loading');
+        setProgress(0);
+        worker.postMessage({ type: 'load' });
+      }
       // Wait for the model to finish loading before recording.
       await new Promise((resolve) => {
         const handler = (event) => {
