@@ -32,6 +32,13 @@ export default function Dashboard() {
     .filter((r) => !r.completed && isToday(r.datetime))
     .sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
 
+  const isFirstTimeUser =
+    stats &&
+    reminders.length === 0 &&
+    stats.pendingCount === 0 &&
+    stats.missedCount === 0 &&
+    stats.doneTodayCount === 0;
+
   const maxCategoryCount = stats ? Math.max(1, ...stats.byCategory.map((c) => c.count)) : 1;
   const priorityOrder = ['high', 'normal', 'low'];
   const byPriorityMap = stats
@@ -45,6 +52,17 @@ export default function Dashboard() {
         <h1>{t('dashboard.title')}</h1>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
+
+      {isFirstTimeUser && (
+        <div className="card" style={{ borderColor: 'var(--primary)' }}>
+          <h3 style={{ marginTop: 0 }}>{t('dashboard.gettingStartedTitle')}</h3>
+          <p className="muted text-sm">{t('dashboard.gettingStartedBody')}</p>
+          <div className="row" style={{ gap: '0.6rem' }}>
+            <Link to="/chat" className="btn btn-primary btn-sm">{t('dashboard.gettingStartedChat')}</Link>
+            <Link to="/reminders" className="btn btn-sm">{t('dashboard.gettingStartedReminders')}</Link>
+          </div>
+        </div>
+      )}
 
       {stats && (
         <>

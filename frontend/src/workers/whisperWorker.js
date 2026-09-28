@@ -36,14 +36,40 @@ class TranscriberSingleton {
   }
 }
 
+// Several model files (encoder, decoder, tokenizer, config...) download in
+// parallel, each reporting ITS OWN 0-100% independently — echoing that
+// straight through makes the displayed percentage jump around (e.g. 16%
+// then 8%) as different files report in, which reads as broken/stuck to
+// someone watching it. Track bytes per file and report one combined,
+// monotonically-increasing percentage instead.
+function makeAggregateProgress(onProgress) {
+  const files = new Map();
+  return (progress) => {
+    const key = progress.file || progress.name || 'unknown';
+    if (typeof progress.loaded === 'number' && typeof progress.total === 'number' && progress.total > 0) {
+      files.set(key, { loaded: progress.loaded, total: progress.total });
+    }
+    let loaded = 0;
+    let total = 0;
+    for (const f of files.values()) {
+      loaded += f.loaded;
+      total += f.total;
+    }
+    const overall = total > 0 ? Math.round((loaded / total) * 100) : Math.round(progress.progress || 0);
+    onProgress({ ...progress, progress: overall });
+  };
+}
+
 self.addEventListener('message', async (event) => {
   const { type, audio, language } = event.data;
 
   if (type === 'load') {
     try {
-      await TranscriberSingleton.getInstance((progress) => {
-        self.postMessage({ type: 'progress', progress });
-      });
+      await TranscriberSingleton.getInstance(
+        makeAggregateProgress((progress) => {
+          self.postMessage({ type: 'progress', progress });
+        })
+      );
       self.postMessage({ type: 'ready' });
     } catch (err) {
       self.postMessage({ type: 'error', message: err.message });

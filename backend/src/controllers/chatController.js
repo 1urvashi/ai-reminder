@@ -30,8 +30,8 @@ async function fallbackToLocalParsing(userId, message, timeZone, mapped) {
   }).format(reminder.datetime);
   return {
     reply:
-      `⚡ AI is unavailable right now (${mapped.message}) — used free local parsing instead: ` +
-      `created "${reminder.title}" for ${when}. Please check it and edit if it's not quite right.`,
+      `⚡ ${mapped.message} I've created "${reminder.title}" for ${when} using simple text ` +
+      `understanding instead — please check it and edit if it's not quite right.`,
     history: [],
     reminders: [
       {
@@ -78,6 +78,7 @@ export async function sendMessage(req, res) {
     if (!mapped) {
       throw err; // let the global handler return a generic 500
     }
+    console.error('AI unavailable, falling back to local parsing:', mapped.detail);
     try {
       const fallback = await fallbackToLocalParsing(req.userId, message, timeZone, mapped);
       res.json(fallback);

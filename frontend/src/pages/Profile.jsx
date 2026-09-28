@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import client from '../api/client';
 import { isPushSupported, getPushSubscription, subscribeToPush, unsubscribeFromPush } from '../utils/push';
 import PasswordInput from '../components/PasswordInput';
+import { COMMON_TIMEZONES, getAllTimezones, timezoneLabel } from '../utils/timezones';
+import { normalizePhone } from '../utils/phone';
 
 const STATUS_STYLE = {
   sent: { label: '✅ Sent', cls: 'alert-ok' },
@@ -45,6 +47,9 @@ export default function Profile() {
   const [status, setStatus] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [caregiverPhoneError, setCaregiverPhoneError] = useState('');
+
+  const allTimezones = useMemo(() => getAllTimezones(), []);
+  const timezoneKnown = allTimezones.includes(timezone);
 
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
@@ -137,16 +142,30 @@ export default function Profile() {
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="field">
-            <label>Timezone (IANA, e.g. Asia/Kolkata)</label>
-            <input className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+            <label>Timezone</label>
+            <select className="select" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+              {!timezoneKnown && timezone && <option value={timezone}>{timezone} (current)</option>}
+              <optgroup label="Common">
+                {COMMON_TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>{timezoneLabel(tz)}</option>
+                ))}
+              </optgroup>
+              <optgroup label="All timezones">
+                {allTimezones.map((tz) => (
+                  <option key={tz} value={tz}>{timezoneLabel(tz)}</option>
+                ))}
+              </optgroup>
+            </select>
+            <small className="muted">This decides what time your reminders actually go off at.</small>
           </div>
           <div className="field">
-            <label>Phone (E.164, e.g. +919876543210)</label>
+            <label>Phone number</label>
             <input
               className={`input${phoneError ? ' has-error' : ''}`}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+919876543210"
+              onBlur={(e) => setPhone(normalizePhone(e.target.value))}
+              placeholder="98765 43210"
             />
             {phoneError && <small className="field-error">{phoneError}</small>}
           </div>
@@ -156,7 +175,7 @@ export default function Profile() {
             <label className="row text-sm"><input type="checkbox" checked={whatsapp} onChange={(e) => setWhatsapp(e.target.checked)} /> WhatsApp message</label>
             <label className="row text-sm"><input type="checkbox" checked={call} onChange={(e) => setCall(e.target.checked)} /> AI phone call</label>
             <label className="row text-sm"><input type="checkbox" checked={push} onChange={(e) => setPush(e.target.checked)} /> Browser push notification</label>
-            <small className="muted">WhatsApp/calls need a phone number + Twilio configured; email needs SMTP configured.</small>
+            <small className="muted">WhatsApp and phone-call reminders also need your phone number above. If a channel isn't working, check with whoever manages this app for you.</small>
           </div>
           <div className="field">
             <label>{t('profile.caregiverTitle')}</label>
@@ -175,6 +194,7 @@ export default function Profile() {
               placeholder={t('profile.caregiverPhone')}
               value={caregiverPhone}
               onChange={(e) => setCaregiverPhone(e.target.value)}
+              onBlur={(e) => setCaregiverPhone(normalizePhone(e.target.value))}
             />
             {caregiverPhoneError && <small className="field-error">{caregiverPhoneError}</small>}
           </div>

@@ -1,9 +1,9 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
-import { LANGUAGE_OPTIONS } from '../i18n/translations';
 import Brand from './Brand';
 import ThemeToggle from './ThemeToggle';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const LINKS = [
   { to: '/dashboard', key: 'nav.dashboard' },
@@ -18,7 +18,7 @@ const LINKS = [
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -42,19 +42,7 @@ export default function Navbar() {
               {t(l.key)}
             </NavLink>
           ))}
-        <select
-          className="select"
-          style={{ width: 'auto', padding: '0.35rem 0.5rem' }}
-          value={lang}
-          onChange={(e) => setLang(e.target.value)}
-          title="Language"
-        >
-          {LANGUAGE_OPTIONS.map((l) => (
-            <option key={l.code} value={l.code}>
-              {l.label}
-            </option>
-          ))}
-        </select>
+        <LanguageSwitcher />
         <ThemeToggle />
         {user && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={handleLogout}>

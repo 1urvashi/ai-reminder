@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import client from '../api/client';
 import { useI18n } from '../i18n/I18nContext';
 import PasswordInput from '../components/PasswordInput';
+import { normalizePhone } from '../utils/phone';
 
 const DEPARTMENTS = ['Sales', 'Marketing', 'Operations', 'Finance', 'Support', 'IT', 'HR', 'Other'];
 const EMPTY_FORM = { name: '', email: '', password: '', phone: '', department: '', departmentOther: '', role: 'employee' };
@@ -157,7 +158,8 @@ export default function Staff() {
                 className={`input${fieldError?.field === 'phone' ? ' has-error' : ''}`}
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+919876543210"
+                onBlur={(e) => setForm((f) => ({ ...f, phone: normalizePhone(e.target.value) }))}
+                placeholder="98765 43210"
               />
               {fieldError?.field === 'phone' && <small className="field-error">{fieldError.message}</small>}
             </div>
@@ -232,7 +234,8 @@ export default function Staff() {
                               className={`input${editFieldError?.field === 'phone' ? ' has-error' : ''}`}
                               value={editForm.phone}
                               onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                              placeholder="+919876543210"
+                              onBlur={(e) => setEditForm((f) => ({ ...f, phone: normalizePhone(e.target.value) }))}
+                              placeholder="98765 43210"
                             />
                             {editFieldError?.field === 'phone' && <small className="field-error">{editFieldError.message}</small>}
                           </div>
